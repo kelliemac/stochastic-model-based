@@ -13,60 +13,67 @@
 workspace()
 
 using PyPlot
-# using LaTeXStrings
+using LaTeXStrings
 # pyplot(size = (800,600), legend = false)    # defaults for Plots
 include("func.jl");
 
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 1000;
-dims = [100, 300, 500];
-σ = 0.001;  # noise level in observation
+maxIter = 10;
+dims = [10];
+r = 2;  # rank
+σ = 0.001; # gaussian noise level in observations b
 
 clf();
 xlabel(L"Iteration $k$");
-ylabel(L"$\| \theta_k\theta_k^T - M \|_1 / \|M\|_1$");
+ylabel(L"$\| X - X_{true} \|_2^2$");
 
 srand(123);
 
-for n in dims
+for d in dims
     #-----------------
     #   Data
     #-----------------
-    X_true = randn(n);
-    noise = randn(n,n);
-    M = X_true * X_true.' + σ * noise;
-    nrmM = norm(M,1);
+    X_true = randn(d,r);
+    # noise = randn(d,d);
+    # M = X_true * X_true.' + σ * noise;
+    # nrmM = norm(M,1);
+    stepSizes = fill(0.0001, maxIter);
 
     #-----------------
     #   Initialize
     #-----------------
-    radius = 1.0;
-    pert = randn(n);
-    X_init = X_true + (radius * norm(X_true,1) / norm(pert,1) ) * pert;
+    radius = 0.01;
+    pert = radius * randn(d,r);
+    X_init = X_true + pert;
 
+    # for updating in place and keeping track of error over time
     X = copy(X_init);
+    aTX = fill(0, (1,r))
+    res = 0;
+    G =  fill(0, (d,r));
     err_hist =  fill(NaN, maxIter);     # track function values
-
-    R = X*X' - M;
-    S = map(sign,R);
-    g = 2 * S' * θ;
 
     #--------------------------------------------
     #   Run subgradient method
     #--------------------------------------------
     for k=1:maxIter
-        residuals!(R, θ, M);
-        subgrad!(g, θ, M, R, S);
+        # pick stochastic a, b
+        a = randn(d,1)
+        atransposeX!(aTX, X, a);
 
-        stepSize = 0.0001;  # must be smaller than 1 / (weak convexity constant); oscillates with constant step
-        BLAS.axpy!(-stepSize,g,θ);
+        getb!(b, aTX, σ);
+        residuals!(res, aTX, b);
+        subgrad!(G, res, a, aTX);
+
+         # must be smaller than 1 / (weak convexity constant); oscillates with constant step
+        BLAS.axpy!(-stepSizes[i],G,X);
 
         # record status and print to console
-        obj = objective(R);
-        err_hist[k] = obj / nrmM;
-        @printf("iter %3d, obj %1.2e, step %1.2e\n", k, obj, stepSize);
+        error = sum(abs2, X-Xtrue)
+        err_hist[k] = error;
+        @printf("iteration %3d, error = %1.2e, stepsize = %1.2e\n", k, error, stepSizes[i]);
     end
 
     #------------------------
