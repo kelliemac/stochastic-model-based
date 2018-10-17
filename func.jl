@@ -15,28 +15,118 @@
 #       S = sign(R)
 #------------------------------------------------------------------------------------------------------------
 
-function atransposeX!(aTX, X, a)
-    # gemv!('T', 1.0, a, X, 0.0, aTX);
-    aTX = a'*X;
+using LinearAlgebra
+using Printf
+using Roots
+
+#----------------------------------------------------------------------------
+# Solve using subgradient method
+#----------------------------------------------------------------------------
+function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter)
+    # Basic data
+    (d,r) = size(X0);
+    XTtrue = Xtrue';
+    sqnrmXtrue = sum(abs2, Xtrue);
+
+    #   Initialize
+    X = copy(X0);
+    a = zeros(d);
+    XTa = zeros(r);
+    b = 0;
+    res = 0;
+    G = zeros(d,r);
+    η = 0;
+    err = NaN;
+    err_hist =  fill(NaN, maxIter);  # to keep track of errors
+
+    #   Run subgradient method
+    for k=1:maxIter
+        # draw stochastic a, b; update resulting residual
+        a = randn(d);
+        XTa = X'*a;
+        res = randn();
+        res = 0.001 * res / norm(res,2)
+        b = sum(abs2, XTa) - res;
+
+        # update subgradient - in place
+        # note G = 2 * sign(res) * (XTa)ᵀ
+        lmul!(0.0,G)  # reset G to zero
+        BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+
+        # update X - in place
+        η = steps_vec[k];
+        BLAS.axpy!(-η,G,X);
+
+        # record error status and print to console
+        err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
+        normalized_err = err / sqnrmXtrue;
+        err_hist[k] = normalized_err;
+        @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+    end
+
+    return err_hist
 end
 
-# Update one-dim residual in place
-function residuals!(res, aTX, b)
-    res = sum(abs2, aTX)  - b;
-end
+#----------------------------------------------------------------------------
+# Solve using mirror descent
+#----------------------------------------------------------------------------
+function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
+    # Basic data
+    (d,r) = size(X0);
+    XTtrue = Xtrue';
+    sqnrmXtrue = sum(abs2, Xtrue);
 
-# generate b as true measurement plus random error
-function getb!(b, aTX, σ)
-    b = sum(abs2, aTX)  + σ*randn(1);
-end
+    # Coefficients for the Bregman divergence polynomials p and Φ
+    #       p(u) = a0 + a1 * u + a2 * u²
+    #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴
+    a0 = 1;
+    a1 = 0;
+    a2 = 1;
 
-# Compute one-dim residual and return value
-function residuals!(res, aTX, b)
-    res = sum(abs2, aTX)  - b;
-end
+    c0 = a0*7/2;
+    c1 = a1*10/3;
+    c2 = a2*13/4;
 
-# Update the subgradient
-#       G(X) = S * 2 aa^T X
-function subgrad!(G, res, a, aTX)
-    BLAS.gemv!('N', 2*sign(res), a, aTX, 0.0, G);
+    #   Initialize
+    X = copy(X0);
+    a = zeros(d);
+    b = 0;
+    η = 0;
+    err = NaN;
+    err_hist =  fill(NaN, maxIter);  # to keep track of errors
+
+    #   Run mirror descent method, i.e. at each iteration solve
+    #  x_{k+1}  = arg min ₓ  {    }
+    #
+    for k=1:maxIter
+        # draw stochastic a, b; update resulting residual
+        a = randn(d);
+        XTa = X'*a;
+        res = randn();
+        res = 0.001 * res / norm(res,2)
+        b = sum(abs2, XTa) - res;
+
+        # update subgradient - in place
+        # note G = 2 * sign(res) * (XTa)ᵀ
+        lmul!(0.0,G)  # reset G to zero
+        BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+
+        # update direction of X: same as ∇Φ(X) - η * G
+        V =   ( 2*c0 + 4*c2*sum(abs2, X) ) * X  - η*G   # ∇Φ(X) - η * G
+        α = norm(V,2)
+
+        # root finding problem to find λ = norm of X
+        λ = find_zero(λ -> (2*c0) * λ + (4*c2) * λ^3 - α, 1.0)
+
+        # rescale X
+        lmul!( λ/α, X )
+
+        # record error status and print to console
+        err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
+        normalized_err = err / sqnrmXtrue;
+        err_hist[k] = normalized_err;
+        @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+    end
+
+    return err_hist
 end
