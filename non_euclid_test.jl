@@ -16,14 +16,16 @@ using Random
 using LaTeXStrings
 using Printf
 using PyPlot
+using ColorBrewer
 
 include("func.jl");
 
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 100;
+maxIter = 1000;
 dims = [10, 100];
+dims_colors = ["#1f78b4", "#33a02c"];
 r = 2;  # rank
 
 Random.seed!(123);  # for reproducibility
@@ -34,13 +36,15 @@ Random.seed!(123);  # for reproducibility
 figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
 ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-title(@sprintf("Subgradient method for covariance estimation (r=%i)", r));
+title(@sprintf("SGD and SMD for covariance estimation (r=%i)", r));
 xlim(0,maxIter)
 
 #-----------------------------------------------------------------------------------------
 #   Run stochastic subgradient method for each dimension
 #-----------------------------------------------------------------------------------------
-for d in dims
+for i in 1:length(dims)
+    d = dims[i]
+
     # Generate true matrix we are searching for
     Xtrue = randn(d,r);
 
@@ -57,8 +61,8 @@ for d in dims
     err_hist_mirror = solve_cov_est_mirror(X_init, Xtrue, stepSizes, maxIter)
 
     # Add errors for this dimension to plot
-    semilogy(err_hist_subgrad, label=@sprintf("SGD, d=%i", d));
-    semilogy(err_hist_mirror, label=@sprintf("SMD, d=%i", d));
+    semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
+    semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 end
 
 # Add legend to plot and save final results for all dimensions
