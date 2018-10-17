@@ -90,7 +90,10 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
     #   Initialize
     X = copy(X0);
     a = zeros(d);
+    XTa = zeros(r);
     b = 0;
+    res = 0;
+    G = zeros(d,r);
     η = 0;
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
@@ -116,7 +119,14 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
         α = norm(V,2)
 
         # root finding problem to find λ = norm of X
-        λ = find_zero(λ -> (2*c0) * λ + (4*c2) * λ^3 - α, 1.0)
+        λ = try
+            find_zero(λ -> (2*c0) * λ + (4*c2) * λ^3 - α, 1.0)
+        catch y
+            if isa(y, Roots.ConvergenceFailed)
+                print("root finding failed, ending iteration\n")
+                break
+            end
+        end
 
         # rescale X
         lmul!( λ/α, X )
