@@ -9,7 +9,7 @@
 #   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X
 #   where (a, b) are chosen randomly.
 #
-# Saves a plot of the relative errors:  || X - Xtrue ||₂² / || Xtrue ||₂²
+# Saves a plot of the relative errors:  min_{U orthogonal} || X U - Xtrue ||₂² / || Xtrue ||₂²
 #
 #------------------------------------------------------------------------------------------------------------
 using Random

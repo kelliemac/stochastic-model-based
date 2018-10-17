@@ -12,7 +12,6 @@
 #   We use the notation
 #       aTX = a^T X
 #       R = <XX^T, a a^T> - b = norm(aTX , 2) - b  (residual)
-#       S = sign(R)
 #------------------------------------------------------------------------------------------------------------
 
 using LinearAlgebra
