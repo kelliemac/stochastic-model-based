@@ -10,26 +10,28 @@
 #   where (a, b) are chosen randomly.
 #
 #------------------------------------------------------------------------------------------------------------
-using PyPlot
 using Random
 using LaTeXStrings
-using LinearAlgebra.BLAS
+using LinearAlgebra
 using Printf
-# pyplot(size = (800,600), legend = false)    # defaults for Plots
+using PyPlot
+
 include("func.jl");
 
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 1000;
+maxIter = 100;
 dims = [10, 100];
 r = 2;  # rank
 σ = 0.001; # gaussian noise level in observations b
 
 clf();
+figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
-ylabel(L"$\| X - X_{true} \|_2^2$");
+ylabel(L"$\frac{\| X_k - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
 title(@sprintf("Subgradient method for covariance estimation (r=%i)", r));
+xlim(0,maxIter)
 
 Random.seed!(123);
 
@@ -37,15 +39,17 @@ for d in dims
     #-----------------
     #   Data
     #-----------------
-    X_true = randn(d,r);
-    stepSizes = fill(0.0001, maxIter);
+    Xtrue = randn(d,r);
+    XTtrue = Xtrue';
+    sqnrmXtrue = sum(abs2, Xtrue);
+    stepSizes = fill(0.001, maxIter);
 
     #-----------------
     #   Initialize
     #-----------------
     radius = 0.1;
     pert = radius * randn(d,r);
-    X_init = X_true + pert;
+    X_init = Xtrue + pert;
 
     X = copy(X_init);
     G = zeros(d,r);
@@ -61,22 +65,29 @@ for d in dims
         XTa = X'*a;
         b = sum(abs2, XTa)  + σ*randn();
 
+        # update residual
         res = sum(abs2, XTa)  - b;
-        BLAS.ger!(2*sign.(res), a, XTa, G);
 
-         # must be smaller than 1 / (weak convexity constant); oscillates with constant step
-        BLAS.axpy!(-stepSizes[k],G,X);
+        # update subgradient - in place
+        # note G = 2 * sign(res) * (XTa)ᵀ
+        lmul!(0.0,G)  # reset G to zero
+        BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+
+        # update X - in place
+        η = stepSizes[k];
+        BLAS.axpy!(-η,G,X);
 
         # record status and print to console
-        this_error = sum(abs2, X-X_true);
+        this_error = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
         err_hist[k] = this_error;
-        @printf("iteration %3d, error = %1.2e, stepsize = %1.2e\n", k, this_error, stepSizes[k]);
+        @printf("iteration %3d, error = %1.2e, stepsize = %1.2e\n", k, this_error, η);
     end
 
     #------------------------
     #   Plot results
     #------------------------
-    semilogy(err_hist);
+    semilogy(err_hist, label=@sprintf("d=%i", d));
 end
 
+legend(loc="lower right")
 savefig("non_eucl_test.pdf");
