@@ -10,49 +10,45 @@
 #   where (a, b) are chosen randomly.
 #
 #------------------------------------------------------------------------------------------------------------
-workspace()
-
 using PyPlot
+using Random
 using LaTeXStrings
+using LinearAlgebra.BLAS
+using Printf
 # pyplot(size = (800,600), legend = false)    # defaults for Plots
 include("func.jl");
 
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 10;
-dims = [10];
+maxIter = 1000;
+dims = [10, 100];
 r = 2;  # rank
 σ = 0.001; # gaussian noise level in observations b
 
 clf();
 xlabel(L"Iteration $k$");
 ylabel(L"$\| X - X_{true} \|_2^2$");
+title(@sprintf("Subgradient method for covariance estimation (r=%i)", r));
 
-srand(123);
+Random.seed!(123);
 
 for d in dims
     #-----------------
     #   Data
     #-----------------
     X_true = randn(d,r);
-    # noise = randn(d,d);
-    # M = X_true * X_true.' + σ * noise;
-    # nrmM = norm(M,1);
     stepSizes = fill(0.0001, maxIter);
 
     #-----------------
     #   Initialize
     #-----------------
-    radius = 0.01;
+    radius = 0.1;
     pert = radius * randn(d,r);
     X_init = X_true + pert;
 
-    # for updating in place and keeping track of error over time
     X = copy(X_init);
-    aTX = fill(0, (1,r))
-    res = 0;
-    G =  fill(0, (d,r));
+    G = zeros(d,r);
     err_hist =  fill(NaN, maxIter);     # track function values
 
     #--------------------------------------------
@@ -60,20 +56,21 @@ for d in dims
     #--------------------------------------------
     for k=1:maxIter
         # pick stochastic a, b
-        a = randn(d,1)
-        atransposeX!(aTX, X, a);
+        a = randn(d);
+        aTX = a'*X;
+        XTa = X'*a;
+        b = sum(abs2, XTa)  + σ*randn();
 
-        getb!(b, aTX, σ);
-        residuals!(res, aTX, b);
-        subgrad!(G, res, a, aTX);
+        res = sum(abs2, XTa)  - b;
+        BLAS.ger!(2*sign.(res), a, XTa, G);
 
          # must be smaller than 1 / (weak convexity constant); oscillates with constant step
-        BLAS.axpy!(-stepSizes[i],G,X);
+        BLAS.axpy!(-stepSizes[k],G,X);
 
         # record status and print to console
-        error = sum(abs2, X-Xtrue)
-        err_hist[k] = error;
-        @printf("iteration %3d, error = %1.2e, stepsize = %1.2e\n", k, error, stepSizes[i]);
+        this_error = sum(abs2, X-X_true);
+        err_hist[k] = this_error;
+        @printf("iteration %3d, error = %1.2e, stepsize = %1.2e\n", k, this_error, stepSizes[k]);
     end
 
     #------------------------

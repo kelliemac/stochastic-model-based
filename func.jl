@@ -16,7 +16,8 @@
 #------------------------------------------------------------------------------------------------------------
 
 function atransposeX!(aTX, X, a)
-    gemv!('T', 1.0, a, X, 0.0, aTX);
+    # gemv!('T', 1.0, a, X, 0.0, aTX);
+    aTX = a'*X;
 end
 
 # Update one-dim residual in place
