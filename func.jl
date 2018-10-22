@@ -127,13 +127,13 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         # update V = ∇Φ(X) - η * G
         η = steps_vec[k];
         V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
-        α = norm(V,2);
+        nrmV = norm(V,2);
 
         # root finding problem to find λ = norm of X
         #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = α
         # (note that direction of X is identical to direction of V)
         try
-            λ = find_zero(λ -> (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3 - α, (0,Inf), α);
+            λ = find_zero(λ -> (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3 - nrmV, (0,Inf), nrmV);
         catch y
             if isa(y, Roots.ConvergenceFailed)
                 print("root finding failed, ending iteration\n")

@@ -24,8 +24,8 @@ include("func.jl");
 #-------------------------------------
 maxIter = 1000;
 r = 2;  # rank
-dims = [10]; #, 100];
-dims_colors = ["#1f78b4"]; #, "#33a02c"];
+dims = [10, 100];
+dims_colors = ["#1f78b4", "#33a02c"];
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
 Random.seed!(123);  # for reproducibility
@@ -62,7 +62,7 @@ for i in 1:length(dims)
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
     stepSizes_subgrad = fill(η, maxIter);
 
-    α = 100.0;  # any positive number
+    α = 0.01;  # any positive number
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
     stepSizes_mirror = fill(η, maxIter);
 
