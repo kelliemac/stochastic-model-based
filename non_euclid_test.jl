@@ -22,10 +22,11 @@ include("func.jl");
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 1000;
+maxIter = 100;
 r = 2;  # rank
 dims = [10, 100];
 dims_colors = ["#1f78b4", "#33a02c"];
+stoch_err = 0.0;  # standard deviation of normal errors in stochastic measurements
 
 Random.seed!(123);  # for reproducibility
 
@@ -57,12 +58,12 @@ for i in 1:length(dims)
     ρ = 0.0;  # linear models are convex
     λ = 0.9 / (τ+ρ);
 
-    α = 0.01;  # any positive number
+    α = 100.0;  # any positive number
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
     stepSizes = fill(η, maxIter);
 
     # Run subgradient method
-    err_hist_subgrad = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter)
+    err_hist_subgrad = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
     err_hist_mirror = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter)
 
     # Add errors for this dimension to plot

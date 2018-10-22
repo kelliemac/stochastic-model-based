@@ -11,7 +11,7 @@
 #
 #   We use the notation
 #       aTX = a^T X
-#       R = <XX^T, a a^T> - b = norm(aTX , 2) - b  (residual)
+#       res = <XX^T, a a^T> - b = || aTX ||₂² - b  (residual)
 #------------------------------------------------------------------------------------------------------------
 
 using LinearAlgebra
@@ -21,7 +21,7 @@ using Roots
 #----------------------------------------------------------------------------
 # Solve using subgradient method
 #----------------------------------------------------------------------------
-function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter)
+function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     # Basic data
     (d,r) = size(X0);
     XTtrue = Xtrue';
@@ -43,8 +43,7 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter)
         # draw stochastic a, b; update resulting residual
         a = randn(d);
         XTa = X'*a;
-        res = randn();
-        res = 0.001 * res / norm(res,2)
+        res = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
         b = sum(abs2, XTa) - res;
 
         # update subgradient - in place
