@@ -19,6 +19,26 @@ using Printf
 using Roots
 
 #----------------------------------------------------------------------------
+# Function to draw stochastic a and b
+#----------------------------------------------------------------------------
+function get_ab(d, XTtrue, stdev_stoch)
+    a = randn(d);
+    stoch_err = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
+    b = sum(abs2, XTtrue*a) + stoch_err;
+    return(a,b)
+end
+
+#----------------------------------------------------------------------------
+# Function to update the subgradient G, in place
+#  Note G = 2 * sign(res) * (XTa)ᵀ
+#----------------------------------------------------------------------------
+function subgrad!(G, XTa, a, b)
+    res = sum(abs2, XTa) - b;
+    lmul!(0.0,G)  # reset G to zero
+    BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+end
+
+#----------------------------------------------------------------------------
 # Solve using subgradient method
 #----------------------------------------------------------------------------
 function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
@@ -42,19 +62,12 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
 
     #   Run subgradient method
     for k=1:maxIter
-        # draw stochastic a, b; update resulting residual
-        a = randn(d);
+        # draw stochastic a, b
+        (a,b) = get_ab(d, XTtrue, stdev_stoch);
         XTa = X'*a;
-        stoch_err = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
-        b = sum(abs2, a'*Xtrue) + stoch_err;
-
-        # compute residual
-        res = sum(abs2, XTa) - b;
 
         # update subgradient - in place
-        # note G = 2 * sign(res) * (XTa)ᵀ
-        lmul!(0.0,G)  # reset G to zero
-        BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+        subgrad!(G, XTa, a, b);
 
         # update X - in place
         η = steps_vec[k];
@@ -65,7 +78,6 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
         @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
-
     end
 
     return err_hist
@@ -74,7 +86,7 @@ end
 #----------------------------------------------------------------------------
 # Solve using mirror descent
 #----------------------------------------------------------------------------
-function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
+function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     # Basic data
     (d,r) = size(X0);
     XTtrue = Xtrue';
@@ -83,13 +95,8 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
     # Coefficients for the Bregman divergence polynomials p and Φ
     #       p(u) = a0 + a1 * u + a2 * u²
     #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴
-    a0 = 1;
-    a1 = 0;
-    a2 = 1;
-
-    c0 = a0*7/2;
-    c1 = a1*10/3;
-    c2 = a2*13/4;
+    (a0, a1, a2) = (1, 0, 1);
+    (c0, c1, c2) = (a0*7/2,  a1*10/3,  a2*13/4);
 
     #   Initialize
     X = copy(X0);
@@ -98,44 +105,45 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
     b = 0;
     res = 0;
     G = zeros(d,r);
+    V = zeros(d,r);
     η = 0;
+    λ = 0;
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
 
-    #   Run mirror descent method, i.e. at each iteration solve
-    #  x_{k+1}  = arg min ₓ  {    }
-    #
+    #   Run mirror descent method, i.e. at each iteration X_{k+1} solves
+    #               ∇ Φ(X_{k+1})  =   ∇ Φ (X_k) - η_k * G_k
+    #  where G_k is the stochastic subgradient at X_k.
+    #  Note that here,
+    #               ∇ Φ(X) = (2*c0 +3*c1*||X||₂ +4*c2*||X||₂²) * X
     for k=1:maxIter
         # draw stochastic a, b
-        a = randn(d);
+        (a,b) = get_ab(d, XTtrue, stdev_stoch);
         XTa = X'*a;
-        stoch_err = 0.1 * randn();
-        b = sum(abs2, a'*Xtrue) - stoch_err;
-
-        # calculate residual
-        res = sum(abs2, XTa) - b;
 
         # update subgradient - in place
-        # note G = 2 * sign(res) * (XTa)ᵀ
-        lmul!(0.0,G)  # reset G to zero
-        BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+        subgrad!(G, XTa, a, b);
 
-        # update direction of X: same as ∇Φ(X) - η * G
-        V =   ( 2*c0 + 4*c2*sum(abs2, X) ) * X  - η*G   # ∇Φ(X) - η * G
-        α = norm(V,2)
+        # update V = ∇Φ(X) - η * G
+        η = steps_vec[k];
+        V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
+        α = norm(V,2);
 
         # root finding problem to find λ = norm of X
-        λ = try
-            find_zero(λ -> (2*c0) * λ + (4*c2) * λ^3 - α, 1.0)
+        #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = α
+        # (note that direction of X is identical to direction of V)
+        try
+            λ = find_zero(λ -> (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3 - α, (0,Inf), α);
         catch y
             if isa(y, Roots.ConvergenceFailed)
                 print("root finding failed, ending iteration\n")
-                break
+                return(err_hist)
             end
         end
 
-        # rescale X
-        lmul!( λ/α, X )
+        # update X - in place
+        lmul!(0.0, X)  # reset to zero
+        BLAS.axpy!(λ,V,X)
 
         # record error status and print to console
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));

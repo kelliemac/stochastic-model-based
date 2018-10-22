@@ -22,7 +22,7 @@ include("func.jl");
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 10000;
+maxIter = 1000;
 r = 2;  # rank
 dims = [10]; #, 100];
 dims_colors = ["#1f78b4"]; #, "#33a02c"];
@@ -60,11 +60,15 @@ for i in 1:length(dims)
 
     α = 0.01;  # any positive number
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
-    stepSizes = fill(η, maxIter);
+    stepSizes_subgrad = fill(η, maxIter);
+
+    α = 100.0;  # any positive number
+    η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
+    stepSizes_mirror = fill(η, maxIter);
 
     # Run subgradient method
-    err_hist_subgrad = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
-    err_hist_mirror = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter)
+    err_hist_subgrad = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
+    err_hist_mirror = solve_cov_est_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
 
     # Add errors for this dimension to plot
     semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
