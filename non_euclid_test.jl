@@ -22,11 +22,11 @@ include("func.jl");
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 100;
+maxIter = 1000;
 r = 2;  # rank
-dims = [10, 100];
-dims_colors = ["#1f78b4", "#33a02c"];
-stoch_err = 0.0;  # standard deviation of normal errors in stochastic measurements
+dims = [10]; #, 100];
+dims_colors = ["#1f78b4"]; #, "#33a02c"];
+stoch_err = 0.0;  # standard deviation of errors in stochastic measurements b
 
 Random.seed!(123);  # for reproducibility
 

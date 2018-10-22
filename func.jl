@@ -37,14 +37,19 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     η = 0;
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
+    val = NaN;
+    vals =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     #   Run subgradient method
     for k=1:maxIter
         # draw stochastic a, b; update resulting residual
         a = randn(d);
         XTa = X'*a;
-        res = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
-        b = sum(abs2, XTa) - res;
+        stoch_err = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
+        b = sum(abs2, a'*Xtrue) + stoch_err;
+
+        # compute residual
+        res = sum(abs2, XTa) - b;
 
         # update subgradient - in place
         # note G = 2 * sign(res) * (XTa)ᵀ
@@ -60,6 +65,7 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
         @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+
     end
 
     return err_hist
@@ -100,12 +106,14 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter)
     #  x_{k+1}  = arg min ₓ  {    }
     #
     for k=1:maxIter
-        # draw stochastic a, b; update resulting residual
+        # draw stochastic a, b
         a = randn(d);
         XTa = X'*a;
-        res = randn();
-        res = 0.001 * res / norm(res,2)
-        b = sum(abs2, XTa) - res;
+        stoch_err = 0.1 * randn();
+        b = sum(abs2, a'*Xtrue) - stoch_err;
+
+        # calculate residual
+        res = sum(abs2, XTa) - b;
 
         # update subgradient - in place
         # note G = 2 * sign(res) * (XTa)ᵀ
