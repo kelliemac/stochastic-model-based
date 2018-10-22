@@ -16,7 +16,7 @@
 
 using LinearAlgebra
 using Printf
-using Roots
+using Polynomials
 
 #----------------------------------------------------------------------------
 # Function to draw stochastic a and b
@@ -77,10 +77,25 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
-        @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+        @printf("iter %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
     end
 
     return err_hist
+end
+
+#------------------------------------------------------------------------------------------------------------
+# Function to find the smallest real, positive root of a polynomial
+# input : coefficients, as a vector by increasing degree (e.g. [a0, a1, a2, a3])
+#------------------------------------------------------------------------------------------------------------
+function get_root(coeffs)
+    all_roots = roots(Poly(coeffs));
+
+    # reduce to positive real roots
+    pos_real_idxs = map(x->(imag(x)==0.0 && real(x)>0), all_roots);
+    pos_real_roots = real(all_roots[pos_real_idxs]);
+
+    # return smallest real root
+    return(minimum(pos_real_roots))
 end
 
 #----------------------------------------------------------------------------
@@ -95,7 +110,7 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     # Coefficients for the Bregman divergence polynomials p and Φ
     #       p(u) = a0 + a1 * u + a2 * u²
     #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴
-    (a0, a1, a2) = (1, 0, 1);
+    (a0, a1, a2) = (1.0, 0.0, 1.0);
     (c0, c1, c2) = (a0*7/2,  a1*10/3,  a2*13/4);
 
     #   Initialize
@@ -130,26 +145,19 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         nrmV = norm(V,2);
 
         # root finding problem to find λ = norm of X
-        #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = α
+        #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = nrmV
         # (note that direction of X is identical to direction of V)
-        try
-            λ = find_zero(λ -> (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3 - nrmV, (0,Inf), nrmV);
-        catch y
-            if isa(y, Roots.ConvergenceFailed)
-                print("root finding failed, ending iteration\n")
-                return(err_hist)
-            end
-        end
+        λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2]);
 
         # update X - in place
         lmul!(0.0, X)  # reset to zero
-        BLAS.axpy!(λ,V,X)
+        BLAS.axpy!(λ/nrmV,V,X)
 
         # record error status and print to console
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
-        @printf("iteration %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+        @printf("iter %3d: nrmX = %1.2e, nrmG = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, norm(X,2), norm(G,2), normalized_err, η);
     end
 
     return err_hist

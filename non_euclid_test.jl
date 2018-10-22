@@ -62,7 +62,7 @@ for i in 1:length(dims)
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
     stepSizes_subgrad = fill(η, maxIter);
 
-    α = 0.01;  # any positive number
+    α = d^2;  # any positive number
     η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
     stepSizes_mirror = fill(η, maxIter);
 
