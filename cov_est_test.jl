@@ -12,16 +12,16 @@
 # Saves a plot of the relative errors:  min_{U orthogonal} || X U - Xtrue ||₂² / || Xtrue ||₂²
 #
 #------------------------------------------------------------------------------------------------------------
-using Random
-using LaTeXStrings
-using Printf
+using Random  # for setting the random seed
+using LaTeXStrings  # for latex in plot labels
+using Printf  # for printing parameter values in plot labels
 using PyPlot
 
 include("solve_cov_est_mirror.jl");
 include("solve_cov_est_subgradient.jl");
 
 #-------------------------------------
-#   Parameters
+#   Set parameters
 #-------------------------------------
 maxIter = 1000;
 r = 2;  # rank
@@ -31,9 +31,9 @@ stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
 Random.seed!(123);  # for reproducibility
 
-#-------------------------------------
-#   Initialize plot
-#-------------------------------------
+#-------------------------------------------------------------------------------------------
+#   Initialize plots - distances to solution and function values
+#-------------------------------------------------------------------------------------------
 dist_fig = figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
 ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
@@ -47,7 +47,7 @@ title(@sprintf("Function values for covariance estimation (r=%i)", r));
 xlim(0,maxIter)
 
 #-----------------------------------------------------------------------------------------
-#   Run stochastic subgradient method for each dimension
+#   Run SGD and SMD method for each dimension
 #-----------------------------------------------------------------------------------------
 for i in 1:length(dims)
     d = dims[i]
@@ -61,34 +61,25 @@ for i in 1:length(dims)
     Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
     # Specify step sizes
-    τ = 10.0;
-    ρ = 0.0;  # linear models are convex
-    λ = 0.9 / (τ+ρ);
+    stepSizes_subgrad = fill(3e-4, maxIter);
+    stepSizes_mirror = fill(3e-4, maxIter);
 
-    α = 0.01;  # any positive number
-    η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
-    stepSizes_subgrad = fill(η, maxIter);
-
-    α = 0.01;  # any positive number
-    η = 1 / ( 1/λ + 1/α * sqrt(maxIter+1) );  # constant step size
-    stepSizes_mirror = fill(η, maxIter);
-
-    # Run subgradient method
+    # Run SGD and SMD
     (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
     (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
 
-    # Add errors for this dimension to plot
+    # Plot distances to solution
     plt[:figure](dist_fig[:number])
     semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
     semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 
-    # Add function values for this dimension to plot
+    # Plot function values
     plt[:figure](funval_fig[:number])
     semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
     semilogy(fun_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 end
 
-# Add legend to plot and save final results for all dimensions
+# Add legends to plots and save the final composite plots
 plt[:figure](dist_fig[:number])
 legend(loc="lower right")
 savefig("cov_est_distances.pdf");

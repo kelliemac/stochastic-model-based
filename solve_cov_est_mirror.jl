@@ -26,8 +26,12 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     V = zeros(d,r);
     η = 0;
     λ = 0;
+
+    # for keeping track of progress
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
+    fun_val = NaN;
+    fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     # draw the stochastic a, b
     (A,B) = get_ab(XTtrue, stdev_stoch, maxIter)
@@ -64,8 +68,12 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
-        @printf("iter %3d: nrmX = %1.2e, nrmG = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, norm(X,2), norm(G,2), normalized_err, η);
+
+        fun_val = compute_empirical_fun_val(X, A, B);
+        fun_hist[k] = fun_val;
+
+        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, fun_val, normalized_err, η);
     end
 
-    return err_hist
+    return (err_hist, fun_hist)
 end

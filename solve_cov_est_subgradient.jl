@@ -47,10 +47,10 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
 
-        val = compute_empirical_fun_val(X, A, B);
-        fun_hist[k] = val;
+        fun_val = compute_empirical_fun_val(X, A, B);
+        fun_hist[k] = fun_val;
 
-        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, val, normalized_err, η);
+        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, fun_val, normalized_err, η);
     end
 
     return (err_hist, fun_hist)
