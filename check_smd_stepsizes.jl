@@ -7,17 +7,18 @@ using LaTeXStrings
 using Printf
 using PyPlot
 
-include("func.jl");
+include("solve_cov_est_mirror.jl");
 
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 1000;
+maxIter = 2500;
 r = 2;  # rank
-d = 100;
+d = 10;
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
-stepsizes = [0.1, 1.0, 5.0, 10.0];
+# stepsizes = [0.1, 1.0, 5.0, 10.0];  # for d=100
+stepsizes = [0.2, 0.3, 0.4, 0.5];  # for d=10
 step_colors = ["#1f78b4", "#33a02c", "red", "blue"];
 
 Random.seed!(321);  # for reproducibility
@@ -48,12 +49,12 @@ for i=1:length(stepsizes)
     stepSizes = fill(η, maxIter);
 
     # Run subgradient method
-    err_hist = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
+    (err_hist,~) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
 
     # Add errors for this stepsize to plot
     semilogy(err_hist, color=step_colors[i], label=@sprintf("step=%1.2e", η));
 end
 
 # Add legend to plot and save final results for all dimensions
-legend(loc="lower right")
+legend(loc="upper right")
 savefig("smd_stepsize_test.pdf");

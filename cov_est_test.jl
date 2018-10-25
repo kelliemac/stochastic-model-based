@@ -23,10 +23,12 @@ include("solve_cov_est_subgradient.jl");
 #-------------------------------------
 #   Set parameters
 #-------------------------------------
-maxIter = 1000;
+maxIter = 2500;
 r = 2;  # rank
 dims = [10, 100];
 dims_colors = ["#1f78b4", "#33a02c"];
+dims_steps_subgrad = [1e-3, 6e-4];
+dims_steps_mirror = [0.3, 5.0];
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
 Random.seed!(123);  # for reproducibility
@@ -50,7 +52,9 @@ xlim(0,maxIter)
 #   Run SGD and SMD method for each dimension
 #-----------------------------------------------------------------------------------------
 for i in 1:length(dims)
-    d = dims[i]
+    d = dims[i];
+    η_subgrad = dims_steps_subgrad[i];
+    η_mirror = dims_steps_mirror[i];
 
     # Generate true matrix we are searching for
     Xtrue = randn(d,r);
@@ -61,8 +65,8 @@ for i in 1:length(dims)
     Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
     # Specify step sizes
-    stepSizes_subgrad = fill(3e-4, maxIter);
-    stepSizes_mirror = fill(3e-4, maxIter);
+    stepSizes_subgrad = fill(η_subgrad, maxIter);
+    stepSizes_mirror = fill(η_mirror, maxIter);
 
     # Run SGD and SMD
     (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
@@ -81,9 +85,9 @@ end
 
 # Add legends to plots and save the final composite plots
 plt[:figure](dist_fig[:number])
-legend(loc="lower right")
+legend(loc="lower left")
 savefig("cov_est_distances.pdf");
 
 plt[:figure](funval_fig[:number])
-legend(loc="lower right")
+legend(loc="lower left")
 savefig("cov_est_function_values.pdf");
