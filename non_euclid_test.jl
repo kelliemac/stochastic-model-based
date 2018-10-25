@@ -17,7 +17,8 @@ using LaTeXStrings
 using Printf
 using PyPlot
 
-include("func.jl");
+include("solve_cov_est_mirror.jl");
+include("solve_cov_est_subgradient.jl");
 
 #-------------------------------------
 #   Parameters
@@ -88,5 +89,10 @@ for i in 1:length(dims)
 end
 
 # Add legend to plot and save final results for all dimensions
+plt[:figure](dist_fig[:number])
 legend(loc="lower right")
-savefig("non_eucl_test.pdf");
+savefig("cov_est_distances.pdf");
+
+plt[:figure](funval_fig[:number])
+legend(loc="lower right")
+savefig("cov_est_function_values.pdf");
