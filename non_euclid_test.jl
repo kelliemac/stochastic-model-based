@@ -33,10 +33,16 @@ Random.seed!(123);  # for reproducibility
 #-------------------------------------
 #   Initialize plot
 #-------------------------------------
-figure(figsize=[10,6]);
+dist_fig = figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
 ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-title(@sprintf("SGD and SMD for covariance estimation (r=%i)", r));
+title(@sprintf("Distance to solution for covariance estimation (r=%i)", r));
+xlim(0,maxIter)
+
+funval_fig = figure(figsize=[10,6]);
+xlabel(L"Iteration $k$");
+ylabel("Empirical Function Value");
+title(@sprintf("Function values for covariance estimation (r=%i)", r));
 xlim(0,maxIter)
 
 #-----------------------------------------------------------------------------------------
@@ -67,12 +73,18 @@ for i in 1:length(dims)
     stepSizes_mirror = fill(η, maxIter);
 
     # Run subgradient method
-    err_hist_subgrad = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
-    err_hist_mirror = solve_cov_est_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
+    (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
+    (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
 
     # Add errors for this dimension to plot
+    plt[:figure](dist_fig[:number])
     semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
     semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
+
+    # Add function values for this dimension to plot
+    plt[:figure](funval_fig[:number])
+    semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
+    semilogy(fun_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 end
 
 # Add legend to plot and save final results for all dimensions

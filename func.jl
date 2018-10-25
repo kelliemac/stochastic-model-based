@@ -18,14 +18,33 @@ using LinearAlgebra
 using Printf
 using Polynomials
 
-#----------------------------------------------------------------------------
-# Function to draw stochastic a and b
-#----------------------------------------------------------------------------
-function get_ab(d, XTtrue, stdev_stoch)
-    a = randn(d);
-    stoch_err = stdev_stoch * randn();  # normal(0,stdev_stoch²) errors
-    b = sum(abs2, XTtrue*a) + stoch_err;
-    return(a,b)
+#------------------------------------------------------------------------------------------
+# Function to draw maxIter stochastic a and b
+# Returns: matrix whose columns are the a's, and
+#                vector whose entries are the corresponding b's.
+#------------------------------------------------------------------------------------------
+function get_ab(XTtrue, stdev_stoch, maxIter)
+    (r,d) = size(XTtrue);
+
+    # generate A
+    A = randn(d, maxIter);
+
+    # generate noisy b based on A
+    stoch_err = stdev_stoch * randn(1, maxIter);  # normal(0,stdev_stoch²) errors
+    XTA = XTtrue*A;
+    B = sum(abs2, XTA, dims=1) + stoch_err;
+
+    return(A,B)
+end
+
+#---------------------------------------------------------------------------------------------------
+# Function to compute empirical function value,
+# using stochastic a's and b's
+# Input: matrixA with columns as the a's, vector B with entries as the b's
+#---------------------------------------------------------------------------------------------------
+function compute_empirical_fun_val(X, A, B)
+    residuals = sum(abs2, X'*A, dims=1) - B;
+    return sum(abs, residuals)
 end
 
 #----------------------------------------------------------------------------
@@ -55,15 +74,21 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     res = 0;
     G = zeros(d,r);
     η = 0;
+
+    # for keeping track of progress
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
-    val = NaN;
-    vals =  fill(NaN, maxIter);  # to keep track of function values (approximates)
+    fun_val = NaN;
+    fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
+
+    # draw the stochastic a, b
+    (A,B) = get_ab(XTtrue, stdev_stoch, maxIter)
 
     #   Run subgradient method
     for k=1:maxIter
-        # draw stochastic a, b
-        (a,b) = get_ab(d, XTtrue, stdev_stoch);
+        # get stochastic a, b
+        a = A[:,k];
+        b = B[k];
         XTa = X'*a;
 
         # update subgradient - in place
@@ -77,10 +102,14 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
         normalized_err = err / sqnrmXtrue;
         err_hist[k] = normalized_err;
-        @printf("iter %3d: error = %1.2e, stepsize = %1.2e\n", k, normalized_err, η);
+
+        val = compute_empirical_fun_val(X, A, B);
+        fun_hist[k] = val;
+
+        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, val, normalized_err, η);
     end
 
-    return err_hist
+    return (err_hist, fun_hist)
 end
 
 #------------------------------------------------------------------------------------------------------------
@@ -126,14 +155,18 @@ function solve_cov_est_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
 
+    # draw the stochastic a, b
+    (A,B) = get_ab(XTtrue, stdev_stoch, maxIter)
+
     #   Run mirror descent method, i.e. at each iteration X_{k+1} solves
     #               ∇ Φ(X_{k+1})  =   ∇ Φ (X_k) - η_k * G_k
     #  where G_k is the stochastic subgradient at X_k.
     #  Note that here,
     #               ∇ Φ(X) = (2*c0 +3*c1*||X||₂ +4*c2*||X||₂²) * X
     for k=1:maxIter
-        # draw stochastic a, b
-        (a,b) = get_ab(d, XTtrue, stdev_stoch);
+        # get stochastic a, b
+        a = A[:,k];
+        b = B[k];
         XTa = X'*a;
 
         # update subgradient - in place
