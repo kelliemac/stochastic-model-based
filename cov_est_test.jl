@@ -23,13 +23,13 @@ include("solve_cov_est_subgradient.jl");
 #-------------------------------------
 #   Set parameters
 #-------------------------------------
-maxIter = 2500;
 r = 2;  # rank
-dims = [10, 100];
-dims_colors = ["#1f78b4", "#33a02c"];
-dims_steps_subgrad = [1e-3, 6e-4];
-dims_steps_mirror = [0.3, 5.0];
+d = 100;  # ambient dimension
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
+
+maxIter = 8000;
+steps = 10.0 .^ [-5, -4, -3, -2, -1, 0, 1, 2];
+num_trials = 25;
 
 Random.seed!(123);  # for reproducibility
 
@@ -37,57 +37,53 @@ Random.seed!(123);  # for reproducibility
 #   Initialize plots - distances to solution and function values
 #-------------------------------------------------------------------------------------------
 dist_fig = figure(figsize=[10,6]);
-xlabel(L"Iteration $k$");
-ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-title(@sprintf("Distance to solution for covariance estimation (r=%i)", r));
-xlim(0,maxIter)
+xlabel(L"Step Size $\eta$");
+ylabel(L"Average Distance $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
+title(@sprintf("Distance to solution for covariance estimation (r=%i, d=%i)", r, d));
+xlim(minimum(steps),maximum(steps))
 
-funval_fig = figure(figsize=[10,6]);
-xlabel(L"Iteration $k$");
-ylabel("Empirical Function Value");
-title(@sprintf("Function values for covariance estimation (r=%i)", r));
-xlim(0,maxIter)
+conv_by_step_subgrad = fill(NaN, length(steps));
+conv_by_step_mirror = fill(NaN, length(steps));
 
 #-----------------------------------------------------------------------------------------
 #   Run SGD and SMD method for each dimension
 #-----------------------------------------------------------------------------------------
-for i in 1:length(dims)
-    d = dims[i];
-    η_subgrad = dims_steps_subgrad[i];
-    η_mirror = dims_steps_mirror[i];
+for i in 1:length(steps)
+    η = steps[i];
 
-    # Generate true matrix we are searching for
-    Xtrue = randn(d,r);
+    sum_distances_subgrad = 0;
+    sum_distances_mirror = 0;
 
-    # Generate initial point
-    radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
-    pert = randn(d,r);
-    Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
+    for t in 1:num_trials
+        # Generate true matrix we are searching for
+        Xtrue = randn(d,r);
 
-    # Specify step sizes
-    stepSizes_subgrad = fill(η_subgrad, maxIter);
-    stepSizes_mirror = fill(η_mirror, maxIter);
+        # Generate initial point
+        radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
+        pert = randn(d,r);
+        Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
-    # Run SGD and SMD
-    (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
-    (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
+        # Specify step sizes
+        stepSizes = fill(η, maxIter);
 
-    # Plot distances to solution
-    plt[:figure](dist_fig[:number])
-    semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
-    semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
+        # Run SGD and SMD
+        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
+        (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
 
-    # Plot function values
-    plt[:figure](funval_fig[:number])
-    semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
-    semilogy(fun_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
+        # Record distance errors
+        sum_distances_subgrad += err_hist_subgrad[end];
+        sum_distances_mirror += err_hist_mirror[end];
+    end
+
+    avg_distances_subgrad = sum_distances_subgrad / num_trials;
+    avg_distances_mirror = sum_distances_mirror / num_trials;
+
+    conv_by_step_subgrad[i] = avg_distances_subgrad;
+    conv_by_step_mirror[i] = avg_distances_mirror;
 end
 
 # Add legends to plots and save the final composite plots
-plt[:figure](dist_fig[:number])
-legend(loc="lower left")
-savefig("cov_est_distances.pdf");
-
-plt[:figure](funval_fig[:number])
-legend(loc="lower left")
-savefig("cov_est_function_values.pdf");
+loglog(steps, conv_by_step_subgrad, label="SGD")
+loglog(steps, conv_by_step_mirror, label="SMD")
+legend(loc="upper right")
+savefig("cov_est_average_progress.pdf");
