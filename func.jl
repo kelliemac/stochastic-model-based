@@ -1,12 +1,18 @@
 #------------------------------------------------------------------------------------------------------------
 #   Define functions needed to solve
 #   min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
+#   and elastic net version:
+#   F(X) :=  E_{a,b} | <XX^T, aa^T> - b | + (<XX^T, aa^T> - b )^2
+#
+#
+#
 #   via
 #   1) stochastic subgradient method (Φ = 1/2 ||⋅||^2)
 #   2) stochastic mirror descent (Φ = a quartic polynomial)
 #
 #   Stochastic subgradients are
 #   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X
+#   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X +
 #   where (a, b) ∈ Rᵐ x R are chosen randomly.
 #
 #   We use the notation
@@ -46,6 +52,11 @@ function compute_empirical_fun_val(X, A, B)
     return sum(abs, residuals)
 end
 
+function compute_enet_empirical_fun_val(X, A, B)
+    residuals = sum(abs2, X'*A, dims=1) - B;
+    return sum(abs, residuals) + sum(abs2, residuals)
+end
+
 #----------------------------------------------------------------------------
 # Function to update the subgradient G, in place
 #  Note G = 2 * sign(res) * (XTa)ᵀ
@@ -54,6 +65,12 @@ function subgrad!(G, XTa, a, b)
     res = sum(abs2, XTa) - b;
     lmul!(0.0,G)  # reset G to zero
     BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+end
+
+function enet_subgrad!(G, XTa, a, b)
+    res = sum(abs2, XTa) - b;
+    lmul!(0.0,G)  # reset G to zero
+    BLAS.ger!(2*sign.(res)+2*res, a, XTa, G);  # rank one update
 end
 
 #------------------------------------------------------------------------------------------------------------
