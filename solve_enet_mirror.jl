@@ -11,10 +11,10 @@ function solve_enet_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     sqnrmXtrue = sum(abs2, Xtrue);
 
     # Coefficients for the Bregman divergence polynomials p and Φ
-    #       p(u) = a0 + a1 * u + a2 * u²
-    #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴
-    (a0, a1, a2) = (1.0, 0.0, 1.0);
-    (c0, c1, c2) = (a0*7/2,  a1*10/3,  a2*13/4);
+    #       p(u) = a0 + a1 * u + a2 * u² + a3 * u³
+    #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴ + c3 ||x||₂⁵
+    (a0, a1, a2, a3) = (1.0, 0.0, 1.0, 1.0);
+    (c0, c1, c2, c3) = (a0*7/2,  a1*10/3,  a2*13/454, a3*16/5);
 
     #   Initialize
     X = copy(X0);
@@ -52,13 +52,14 @@ function solve_enet_mirror(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
 
         # update V = ∇Φ(X) - η * G
         η = steps_vec[k];
-        V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
+        sqnrmX = sum(abs2, X);
+        V = ( 2*c0 + 3*c1*sqrt(sqnrmX) + 4*c2*sqnrmX + 5*c3*sqnrmX^(3/2) ) * X  - η*G;
         nrmV = norm(V,2);
 
         # root finding problem to find λ = norm of X
-        #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = nrmV
+        #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  + (5*c3) * λ^4 = nrmV
         # (note that direction of X is identical to direction of V)
-        λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2]);
+        λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2, 5*c3]);
 
         # update X - in place
         lmul!(0.0, X)  # reset to zero
