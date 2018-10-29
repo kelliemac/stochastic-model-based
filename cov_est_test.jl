@@ -27,23 +27,20 @@ r = 2;  # rank
 d = 100;  # ambient dimension
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
-maxIter = 8000;
+maxIter = 5000;
 steps = 10.0 .^ [-5, -4, -3, -2, -1, 0, 1, 2];
-num_trials = 25;
+num_trials = 10;
 
 Random.seed!(123);  # for reproducibility
 
 #-------------------------------------------------------------------------------------------
-#   Initialize plots - distances to solution and function values
+#   For plots - distances to solution and function values
 #-------------------------------------------------------------------------------------------
-dist_fig = figure(figsize=[10,6]);
-xlabel(L"Step Size $\eta$");
-ylabel(L"Average Distance $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-title(@sprintf("Distance to solution for covariance estimation (r=%i, d=%i)", r, d));
-xlim(minimum(steps),maximum(steps))
-
 conv_by_step_subgrad = fill(NaN, length(steps));
 conv_by_step_mirror = fill(NaN, length(steps));
+
+vals_by_step_subgrad = fill(NaN, length(steps));
+vals_by_step_mirror = fill(NaN, length(steps));
 
 #-----------------------------------------------------------------------------------------
 #   Run SGD and SMD method for each dimension
@@ -53,6 +50,8 @@ for i in 1:length(steps)
 
     sum_distances_subgrad = 0;
     sum_distances_mirror = 0;
+    sum_vals_subgrad = 0;
+    sum_vals_mirror = 0;
 
     for t in 1:num_trials
         # Generate true matrix we are searching for
@@ -70,9 +69,12 @@ for i in 1:length(steps)
         (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
         (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
 
-        # Record distance errors
+        # Record final errors
         sum_distances_subgrad += err_hist_subgrad[end];
         sum_distances_mirror += err_hist_mirror[end];
+
+        sum_vals_subgrad += fun_hist_subgrad[end];
+        sum_vals_mirror += fun_hist_mirror[end];
     end
 
     avg_distances_subgrad = sum_distances_subgrad / num_trials;
@@ -80,10 +82,31 @@ for i in 1:length(steps)
 
     conv_by_step_subgrad[i] = avg_distances_subgrad;
     conv_by_step_mirror[i] = avg_distances_mirror;
+
+    vals_by_step_subgrad[i] = sum_vals_subgrad / num_trials;
+    vals_by_step_mirror[i] = sum_vals_mirror / num_trials;
 end
 
-# Add legends to plots and save the final composite plots
+# Make and save distance plot
+dist_fig = figure(figsize=[10,6]);
+xlabel(L"Step Size $\eta$");
+ylabel(L"Average Distance $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
+title(@sprintf("Distance to solution for covariance estimation (r=%i, d=%i)", r, d));
+xlim(minimum(steps),maximum(steps))
+
 loglog(steps, conv_by_step_subgrad, label="SGD")
 loglog(steps, conv_by_step_mirror, label="SMD")
 legend(loc="upper right")
 savefig("cov_est_average_progress.pdf");
+
+# Make and save function values plot
+fun_vals_fig = figure(figsize=[10,6]);
+xlabel(L"Step Size $\eta$");
+ylabel("Average final function value");
+title(@sprintf("Function values for covariance estimation (r=%i, d=%i)", r, d));
+xlim(minimum(steps),maximum(steps))
+
+loglog(steps, vals_by_step_subgrad, label="SGD")
+loglog(steps, vals_by_step_mirror, label="SMD")
+legend(loc="upper right")
+savefig("cov_est_average_fun_vals.pdf");
