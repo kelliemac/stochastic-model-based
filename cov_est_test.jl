@@ -13,12 +13,10 @@
 #
 #------------------------------------------------------------------------------------------------------------
 using Random  # for setting the random seed
-using LaTeXStrings  # for latex in plot labels
-using Printf  # for printing parameter values in plot labels
 using PyPlot
+using LaTeXStrings, Printf  # for plot labels
 
-include("solve_cov_est_mirror.jl");
-include("solve_cov_est_subgradient.jl");
+include("solve_cov_est.jl");
 
 #-------------------------------------
 #   Set parameters
@@ -66,8 +64,8 @@ for i in 1:length(steps)
         stepSizes = fill(η, maxIter);
 
         # Run SGD and SMD
-        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est_subgradient(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
-        (err_hist_mirror, fun_hist_mirror) = solve_cov_est_mirror(Xinit, Xtrue, stepSizes, maxIter, stoch_err)
+        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter, stepSizes, method="subgradient")
+        (err_hist_mirror, fun_hist_mirror) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter, stepSizes, method="mirror")
 
         # Record final errors
         sum_distances_subgrad += err_hist_subgrad[end];

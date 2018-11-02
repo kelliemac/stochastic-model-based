@@ -6,18 +6,24 @@
 #
 #   Inputs:     X0 = initialization (d x r matrix)
 #                   Xtrue = true matrix we are solving for (so we can plot dist. to solution)
-#                   steps_vec
-#                   maxIter
-#                   stdev_stoch
+#                   stepSizes = one-dim array of stepsizes (length maxIter)
+#                   maxIter = maximum number of iterations
+#                   stochErr = variance of stochastic errors in residuals <XX^T,aa^T> - b
 #                   method = "subgradient" or "mirror"
 #
-#   Outputs:    (err_hist, fun_hist) = (history of normalized distances to solution,
-#                                                        history of empirical function values)
+#   Outputs:   (err_hist, fun_hist) = (history of normalized distances to solution,
+#                                                       history of empirical function values)
 #-------------------------------------------------------------------------------------------------------------
 include("func.jl");
 using Printf
 
-function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch, method)
+function solve_cov_est(X0::Array{Float64,2},
+                                      Xtrue::Array{Float64,2},
+                                      stochErr::Float64,
+                                      maxIter::Int64,
+                                      stepSizes::Array{Float64,1};
+                                      method::String="subgradient"
+                                    )
     # Basic data
     (d,r) = size(X0);
     XTtrue = Xtrue';
@@ -51,7 +57,7 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch, m
     fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     # draw the stochastic a, b
-    (A,B) = get_ab(XTtrue, stdev_stoch, maxIter)
+    (A,B) = get_ab(XTtrue, stochErr, maxIter)
 
     #   Run the method
     for k=1:maxIter
@@ -65,11 +71,11 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch, m
 
         if method=="subgradient"
             # update X - in place
-            η = steps_vec[k];
+            η = stepSizes[k];
             BLAS.axpy!(-η,G,X);
         elseif method=="mirror"
             # update V = ∇Φ(X) - η * G
-            η = steps_vec[k];
+            η = stepSizes[k];
             V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
             nrmV = norm(V,2);
 
