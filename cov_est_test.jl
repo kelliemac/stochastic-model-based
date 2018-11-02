@@ -1,16 +1,16 @@
 #------------------------------------------------------------------------------------------------------------
-#   Code to solve
+#   Solving
 #   min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
 #   via
 #   1) stochastic subgradient method (Φ = 1/2 ||⋅||^2)
 #   2) stochastic mirror descent (Φ = a quartic polynomial)
 #
-#   Stochastic subgradients are
+#   Note that stochastic subgradients are
 #   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X
 #   where (a, b) are chosen randomly.
 #
-# Saves a plot of the relative errors:  min_{U orthogonal} || X U - Xtrue ||₂² / || Xtrue ||₂²
-#
+# Saves plots of 1) relative errors:  min_{U orthogonal} || X U - Xtrue ||₂² / || Xtrue ||₂²
+#                        2) empirical function values
 #------------------------------------------------------------------------------------------------------------
 using Random  # for setting the random seed
 using PyPlot
@@ -64,8 +64,10 @@ for i in 1:length(steps)
         stepSizes = fill(η, maxIter);
 
         # Run SGD and SMD
-        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter, stepSizes, method="subgradient")
-        (err_hist_mirror, fun_hist_mirror) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter, stepSizes, method="mirror")
+        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est(Xinit, Xtrue, stoch_err,
+                                                                          maxIter, stepSizes, method="subgradient")
+        (err_hist_mirror, fun_hist_mirror) = solve_cov_est(Xinit, Xtrue, stoch_err,
+                                                                          maxIter, stepSizes, method="mirror")
 
         # Record final errors
         sum_distances_subgrad += err_hist_subgrad[end];

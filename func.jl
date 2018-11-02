@@ -1,65 +1,55 @@
 #------------------------------------------------------------------------------------------------------------
-#   Define functions needed to solve
-#   min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
-#   and elastic net version:
-#   F(X) :=  E_{a,b} | <XX^T, aa^T> - b | + (<XX^T, aa^T> - b )^2
+#   Define functions needed to solve the covariance estimation problem:
+#           min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
+#   and it's elastic net variant with
+#           F(X) :=  E_{a,b} | <XX^T, aa^T> - b | + (<XX^T, aa^T> - b )^2
 #
+#   Solve via two methods:
+#           1) stochastic subgradient (Φ = 1/2 ||⋅||^2)
+#           2) stochastic mirror descent (Φ = a polynomial)
 #
-#
-#   via
-#   1) stochastic subgradient method (Φ = 1/2 ||⋅||^2)
-#   2) stochastic mirror descent (Φ = a quartic polynomial)
-#
-#   Stochastic subgradients are
-#   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X
-#   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X +
-#   where (a, b) ∈ Rᵐ x R are chosen randomly.
-#
-#   We use the notation
-#       aTX = a^T X
-#       res = <XX^T, a a^T> - b = || aTX ||₂² - b  (residual)
+#   Note that stochastic subgradients are
+#           ∂ (  | <XX^T, a a^T> - b |  )   =    sign(res) * 2 aa^T X
+#           ∂ (  | <XX^T, a a^T> - b |  )   =    (2 * res + sign(res) ) * 2 aa^T X
+#   where (a, b) ∈ Rᵐ x R are chosen randomly, and
+#           res = <XX^T, a a^T> - b = || aTX ||₂² - b  (residual)
 #------------------------------------------------------------------------------------------------------------
 
 using LinearAlgebra
 using Polynomials
 
 #------------------------------------------------------------------------------------------
-# Function to draw maxIter stochastic a and b
-# Returns: matrix whose columns are the a's, and
-#                vector whose entries are the corresponding b's.
+# Draw stochastic a's (gaussian) and corresponding b's
+# Returns: maxIter of them, in format:
+#                       A = matrix with a's in columns
+#                       B = vector with b's in entries
 #------------------------------------------------------------------------------------------
-function get_ab(XTtrue, stdev_stoch, maxIter)
+function get_ab(XTtrue::Array{Float64,2}, stochErr::Float64, maxIter::Int64)
     (r,d) = size(XTtrue);
-
-    # generate A
-    A = randn(d, maxIter);
-
-    # generate noisy b based on A
-    stoch_err = stdev_stoch * randn(1, maxIter);  # normal(0,stdev_stoch²) errors
-    XTA = XTtrue*A;
-    B = sum(abs2, XTA, dims=1) + stoch_err;
-
+    A = randn(d, maxIter);  # gaussian entries in a's
+    bError = stochErr * randn(1, maxIter);  # normal(0,stochErr²) errors
+    B = sum(abs2, XTtrue*A, dims=1) + bError;
     return(A,B)
 end
 
 #---------------------------------------------------------------------------------------------------
-# Function to compute empirical function value,
-# using stochastic a's and b's
-# Input: matrixA with columns as the a's, vector B with entries as the b's
+#   Compute empirical function values, based on (A,B) as above
+#   Inputs:     X = point to evaluate function (d x r matrix)
+#                   A = matrix with columns as the a's
+#                   B = vector with b's as entries
 #---------------------------------------------------------------------------------------------------
-function compute_empirical_fun_val(X, A, B)
+function compute_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
     return sum(abs, residuals)
 end
 
-function compute_enet_empirical_fun_val(X, A, B)
+function compute_enet_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
     return sum(abs, residuals) + sum(abs2, residuals)
 end
 
 #----------------------------------------------------------------------------
-# Function to update the subgradient G, in place
-#  Note G = 2 * sign(res) * (XTa)ᵀ
+# Update the subgradient G, in place
 #----------------------------------------------------------------------------
 function subgrad!(G, XTa, a, b)
     res = sum(abs2, XTa) - b;
@@ -74,7 +64,7 @@ function enet_subgrad!(G, XTa, a, b)
 end
 
 #------------------------------------------------------------------------------------------------------------
-# Function to find the smallest real, positive root of a polynomial
+# Find the smallest real, positive root of a polynomial
 # input : coefficients, as a vector by increasing degree (e.g. [a0, a1, a2, a3])
 #------------------------------------------------------------------------------------------------------------
 function get_root(coeffs)
