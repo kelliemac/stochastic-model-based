@@ -1,6 +1,19 @@
-#----------------------------------------------------------------------------------------------------
-# Solve covariance estimation problem using subgradient method
-#----------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------
+#   Solve covariance estimation problem
+#           min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
+#   using either 1) subgradient method or
+#                       2) mirror descent (polynomial mirror map)
+#
+#   Inputs:     X0 = initialization (d x r matrix)
+#                   Xtrue = true matrix we are solving for (so we can plot dist. to solution)
+#                   steps_vec
+#                   maxIter
+#                   stdev_stoch
+#                   method = "subgradient" or "mirror"
+#
+#   Outputs:    (err_hist, fun_hist) = (history of normalized distances to solution,
+#                                                        history of empirical function values)
+#-------------------------------------------------------------------------------------------------------------
 include("func.jl");
 using Printf
 
