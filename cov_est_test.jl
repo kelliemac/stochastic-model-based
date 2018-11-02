@@ -34,11 +34,11 @@ Random.seed!(123);  # for reproducibility
 #-------------------------------------------------------------------------------------------
 #   For plots - distances to solution and function values
 #-------------------------------------------------------------------------------------------
-conv_by_step_subgrad = fill(NaN, length(steps));
-conv_by_step_mirror = fill(NaN, length(steps));
+distances_subgrad = fill(NaN, length(steps));
+distances_mirror = fill(NaN, length(steps));
 
-vals_by_step_subgrad = fill(NaN, length(steps));
-vals_by_step_mirror = fill(NaN, length(steps));
+vals_subgrad = fill(NaN, length(steps));
+vals_mirror = fill(NaN, length(steps));
 
 #-----------------------------------------------------------------------------------------
 #   Run SGD and SMD method for each dimension
@@ -77,14 +77,11 @@ for i in 1:length(steps)
         sum_vals_mirror += fun_hist_mirror[end];
     end
 
-    avg_distances_subgrad = sum_distances_subgrad / num_trials;
-    avg_distances_mirror = sum_distances_mirror / num_trials;
+    distances_subgrad[i] = sum_distances_subgrad / num_trials;
+    distances_mirror[i] = sum_distances_mirror / num_trials;
 
-    conv_by_step_subgrad[i] = avg_distances_subgrad;
-    conv_by_step_mirror[i] = avg_distances_mirror;
-
-    vals_by_step_subgrad[i] = sum_vals_subgrad / num_trials;
-    vals_by_step_mirror[i] = sum_vals_mirror / num_trials;
+    vals_subgrad[i] = sum_vals_subgrad / num_trials;
+    vals_mirror[i] = sum_vals_mirror / num_trials;
 end
 
 # Make and save distance plot
@@ -94,8 +91,8 @@ ylabel(L"Average Distance $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{tr
 title(@sprintf("Distance to solution for covariance estimation (r=%i, d=%i)", r, d));
 xlim(minimum(steps),maximum(steps))
 
-loglog(steps, conv_by_step_subgrad, label="SGD")
-loglog(steps, conv_by_step_mirror, label="SMD")
+loglog(steps, distances_subgrad, label="SGD")
+loglog(steps, distances_mirror, label="SMD")
 legend(loc="upper right")
 savefig("cov_est_average_progress.pdf");
 
@@ -106,7 +103,7 @@ ylabel("Average final function value");
 title(@sprintf("Function values for covariance estimation (r=%i, d=%i)", r, d));
 xlim(minimum(steps),maximum(steps))
 
-loglog(steps, vals_by_step_subgrad, label="SGD")
-loglog(steps, vals_by_step_mirror, label="SMD")
+loglog(steps, vals_subgrad, label="SGD")
+loglog(steps, vals_mirror, label="SMD")
 legend(loc="upper right")
 savefig("cov_est_average_fun_vals.pdf");
