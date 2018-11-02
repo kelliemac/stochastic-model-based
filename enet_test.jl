@@ -1,26 +1,25 @@
 #------------------------------------------------------------------------------------------------------------
 #   Code to solve elastic net-ish version of covariance estimation
 #   min_{X \in \R^{d x r}} F(X) :=  E_{a,b} | <XX^T, aa^T> - b | + (<XX^T, aa^T> - b )^2
-#
+#   for a bunch of trials
 #------------------------------------------------------------------------------------------------------------
-using Random
-using LaTeXStrings
-using Printf
+using Random  # for setting the random seed
 using PyPlot
+using LaTeXStrings, Printf  # for plot labels
 
-include("solve_enet_subgradient.jl");
-include("solve_enet_mirror.jl");
+include("solve_enet.jl");
 
 #-------------------------------------
-#   Parameters
+#   Set parameters
 #-------------------------------------
-maxIter = 1000; #2500
 r = 2;  # rank
-dims = [100]; #[10, 100];
-dims_steps_subgrad = [1e-6];
-dims_steps_mirror = [100.0];
+dims = [100];  # ambient dimension
 dims_colors = ["#1f78b4"]; #, "#33a02c"];
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
+
+maxIter = 100;
+dims_steps_subgrad = [1e-6];
+dims_steps_mirror = [100.0];
 
 Random.seed!(123);  # for reproducibility
 
@@ -54,25 +53,27 @@ for i in 1:length(dims)
     Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
     # Specify step sizes
-    stepSizes_subgrad = fill(dims_steps_subgrad[i], maxIter);
-    stepSizes_mirror = fill(dims_steps_mirror[i], maxIter);
+    steps_subgrad = fill(dims_steps_subgrad[i], maxIter);
+    steps_mirror = fill(dims_steps_mirror[i], maxIter);
 
-    # Run subgradient method
-    (err_hist_subgrad, fun_hist_subgrad) = solve_enet_subgradient(Xinit, Xtrue, stepSizes_subgrad, maxIter, stoch_err)
-    (err_hist_mirror, fun_hist_mirror) = solve_enet_mirror(Xinit, Xtrue, stepSizes_mirror, maxIter, stoch_err)
+    # Run the two methods
+    (err_hist_subgrad, fun_hist_subgrad) = solve_enet(Xinit, Xtrue, stoch_err, maxIter,
+                                                                                        steps_subgrad,  method="subgradient")
+    (err_hist_mirror, fun_hist_mirror) = solve_enet(Xinit, Xtrue, stoch_err, maxIter,
+                                                                                        steps_mirror,  method="mirror")
 
-    # Add errors for this dimension to plot
+    # Add distances to appropriate plot
     plt[:figure](dist_fig[:number])
     semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
     semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 
-    # Add function values for this dimension to plot
+    # Add function values to appropriate plot
     plt[:figure](funval_fig[:number])
     semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
     semilogy(fun_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 end
 
-# Add legend to plot and save final results for all dimensions
+# Add legends to plots and save final results
 plt[:figure](dist_fig[:number])
 legend(loc="lower right")
 savefig("enet_test_distances.pdf");

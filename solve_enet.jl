@@ -62,7 +62,7 @@ function solve_enet(X0::Array{Float64,2},
             BLAS.axpy!(-η,G,X);
         elseif method=="mirror"
             # update V = ∇Φ(X) - η * G
-            η = steps_vec[k];
+            η = stepSizes[k];
             sqnrmX = sum(abs2, X);
             V = ( 2*c0 + 3*c1*sqrt(sqnrmX) + 4*c2*sqnrmX + 5*c3*sqnrmX^(3/2) ) * X  - η*G;
             nrmV = norm(V,2);
