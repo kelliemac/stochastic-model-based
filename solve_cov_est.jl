@@ -4,13 +4,13 @@
 include("func.jl");
 using Printf
 
-function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
+function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch, method)
     # Basic data
     (d,r) = size(X0);
     XTtrue = Xtrue';
     sqnrmXtrue = sum(abs2, Xtrue);
 
-    #   Initialize
+    #   Initializations
     X = copy(X0);
     a = zeros(d);
     XTa = zeros(r);
@@ -19,7 +19,19 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     G = zeros(d,r);
     η = 0;
 
-    # for keeping track of progress
+    if method=="mirror"
+        # Coefficients for the Bregman divergence polynomials p and Φ
+        #       p(u) = a0 + a1 * u + a2 * u²
+        #       Φ(x) = c0 ||x||₂² + c1 ||x||₂³ + c2 ||x||₂⁴
+        (a0, a1, a2) = (1.0, 0.0, 1.0);
+        (c0, c1, c2) = (a0*7/2,  a1*10/3,  a2*13/4);
+
+        #   more initializations
+        V = zeros(d,r);
+        λ = 0;
+    end
+
+    # Make vectors for keeping track of progress
     err = NaN;
     err_hist =  fill(NaN, maxIter);  # to keep track of errors
     fun_val = NaN;
@@ -28,7 +40,7 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
     # draw the stochastic a, b
     (A,B) = get_ab(XTtrue, stdev_stoch, maxIter)
 
-    #   Run subgradient method
+    #   Run the method
     for k=1:maxIter
         # get stochastic a, b
         a = A[:,k];
@@ -38,9 +50,25 @@ function solve_cov_est_subgradient(X0, Xtrue, steps_vec, maxIter, stdev_stoch)
         # update subgradient - in place
         subgrad!(G, XTa, a, b);
 
-        # update X - in place
-        η = steps_vec[k];
-        BLAS.axpy!(-η,G,X);
+        if method=="subgradient"
+            # update X - in place
+            η = steps_vec[k];
+            BLAS.axpy!(-η,G,X);
+        elseif method=="mirror"
+            # update V = ∇Φ(X) - η * G
+            η = steps_vec[k];
+            V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
+            nrmV = norm(V,2);
+
+            # root finding problem to find λ = norm of X
+            #           (2*c0) * λ + (3*c1) * λ^2 + (4*c2) * λ^3  = nrmV
+            # (note that direction of X is identical to direction of V)
+            λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2]);
+
+            # update X - in place
+            lmul!(0.0, X)  # reset to zero
+            BLAS.axpy!(λ/nrmV,V,X)
+        end
 
         # record error status and print to console
         err = sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X));
