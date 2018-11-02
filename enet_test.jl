@@ -58,18 +58,22 @@ for i in 1:length(dims)
 
     # Run the two methods
     (err_hist_subgrad, fun_hist_subgrad) = solve_enet(Xinit, Xtrue, stoch_err, maxIter,
-                                                                                        steps_subgrad,  method="subgradient")
+                                                                                        steps_subgrad,
+                                                                                        method="subgradient")
     (err_hist_mirror, fun_hist_mirror) = solve_enet(Xinit, Xtrue, stoch_err, maxIter,
-                                                                                        steps_mirror,  method="mirror")
+                                                                                        steps_mirror,
+                                                                                        method="mirror")
 
     # Add distances to appropriate plot
     plt[:figure](dist_fig[:number])
-    semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
+    semilogy(err_hist_subgrad, linestyle="--", color=dims_colors[i],
+                    label=@sprintf("SGD, d=%i", d));
     semilogy(err_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 
     # Add function values to appropriate plot
     plt[:figure](funval_fig[:number])
-    semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i], label=@sprintf("SGD, d=%i", d));
+    semilogy(fun_hist_subgrad, linestyle="--", color=dims_colors[i],
+                    label=@sprintf("SGD, d=%i", d));
     semilogy(fun_hist_mirror, color=dims_colors[i], label=@sprintf("SMD, d=%i", d));
 end
 
