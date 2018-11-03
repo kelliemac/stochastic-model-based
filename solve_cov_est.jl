@@ -22,7 +22,8 @@ function solve_cov_est(X0::Array{Float64,2},
                                       stochErr::Float64,
                                       maxIter::Int64,
                                       stepSizes::Array{Float64,1};
-                                      method::String="subgradient"
+                                      method::String="subgradient",
+                                      verbose::Bool=true
                                     )
     # Basic data
     (d,r) = size(X0);
@@ -97,8 +98,10 @@ function solve_cov_est(X0::Array{Float64,2},
         fun_val = compute_empirical_function(X, A, B);
         fun_hist[k] = fun_val;
 
-        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n",
-                        k, fun_val, normalized_err, η);
+        if verbose
+            @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n",
+                            k, fun_val, normalized_err, η);
+        end
     end
 
     return (err_hist, fun_hist)
