@@ -24,7 +24,7 @@ using Polynomials
 #                       A = matrix with a's in columns
 #                       B = vector with b's in entries
 #------------------------------------------------------------------------------------------
-function get_ab(XTtrue::Array{Float64,2}, stochErr::Float64, maxIter::Int64)
+function get_ab(XTtrue, stochErr::Float64, maxIter::Int64)
     (r,d) = size(XTtrue);
     A = randn(d, maxIter);  # gaussian entries in a's
     bError = stochErr * randn(1, maxIter);  # normal(0,stochErr²) errors

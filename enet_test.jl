@@ -17,9 +17,9 @@ dims = [100];  # ambient dimension
 dims_colors = ["#1f78b4"]; #, "#33a02c"];
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
-maxIter = 100;
+maxIter = 2000;
 dims_steps_subgrad = [1e-6];
-dims_steps_mirror = [100.0];
+dims_steps_mirror = [0.1];
 
 Random.seed!(123);  # for reproducibility
 
