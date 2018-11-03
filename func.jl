@@ -40,12 +40,12 @@ end
 #---------------------------------------------------------------------------------------------------
 function compute_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
-    return sum(abs, residuals)
+    return sum(abs, residuals) / size(A,2)
 end
 
 function compute_enet_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
-    return sum(abs, residuals) + sum(abs2, residuals)
+    return (sum(abs, residuals) + sum(abs2, residuals)) / size(A,2)
 end
 
 #----------------------------------------------------------------------------
