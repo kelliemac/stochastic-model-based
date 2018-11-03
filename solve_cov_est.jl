@@ -58,7 +58,8 @@ function solve_cov_est(X0::Array{Float64,2},
     fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     # draw the stochastic a, b
-    (A,B) = get_ab(XTtrue, stochErr, maxIter)
+    (A,B) = get_ab(XTtrue, stochErr, maxIter);
+    true_empirical_value = compute_empirical_function(Xtrue, A, B);
 
     #   Run the method
     for k=1:maxIter
@@ -96,11 +97,12 @@ function solve_cov_est(X0::Array{Float64,2},
         err_hist[k] = normalized_err;
 
         fun_val = compute_empirical_function(X, A, B);
-        fun_hist[k] = fun_val;
+        value_error = fun_val - true_empirical_value ;
+        fun_hist[k] = value_error;
 
         if verbose
-            @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n",
-                            k, fun_val, normalized_err, η);
+            @printf("iter %3d: function err = %1.2e, dist err = %1.2e, stepsize = %1.2e\n",
+                            k, value_error, normalized_err, η);
         end
     end
 

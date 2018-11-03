@@ -99,7 +99,7 @@ savefig("plots/cov_est_average_distances.pdf");
 # Make and save function values plot
 fun_vals_fig = figure(figsize=[10,6]);
 xlabel(L"Step Size $\eta$");
-ylabel("Average final function value");
+ylabel("Average final function value error (relative)");
 title(@sprintf("Function values for covariance estimation (r=%i, d=%i)", r, d));
 xlim(minimum(steps),maximum(steps))
 
