@@ -94,7 +94,7 @@ xlim(minimum(steps),maximum(steps))
 loglog(steps, distances_subgrad, label="SGD")
 loglog(steps, distances_mirror, label="SMD")
 legend(loc="upper right")
-savefig("cov_est_average_progress.pdf");
+savefig("cov_est_average_distances.pdf");
 
 # Make and save function values plot
 fun_vals_fig = figure(figsize=[10,6]);
@@ -106,4 +106,4 @@ xlim(minimum(steps),maximum(steps))
 loglog(steps, vals_subgrad, label="SGD")
 loglog(steps, vals_mirror, label="SMD")
 legend(loc="upper right")
-savefig("cov_est_average_fun_vals.pdf");
+savefig("cov_est_average_values.pdf");
