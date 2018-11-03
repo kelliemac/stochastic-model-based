@@ -80,8 +80,8 @@ end
 # Add legends to plots and save final results
 plt[:figure](dist_fig[:number])
 legend(loc="lower right")
-savefig("enet_test_distances.pdf");
+savefig("plots/enet_distances.pdf");
 
 plt[:figure](funval_fig[:number])
 legend(loc="lower right")
-savefig("enet_test_values.pdf");
+savefig("plots/enet_values.pdf");
