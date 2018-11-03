@@ -14,8 +14,8 @@ Random.seed!(123);  # for reproducibility
 r = 2;  # rank
 d = 100;
 stoch_err = 0.0;  # standard deviation of errors in stochastic measurements b
-maxIter = 9000;
-init_radius = 0.1;  # 2-norm measure of relative deviation between Xtrue and Xinit
+maxIter = 20;
+init_radius = 0.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
 # Set accuracy parameters
 ϵ = 1e-3;
