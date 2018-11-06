@@ -53,8 +53,8 @@ end
 #----------------------------------------------------------------------------
 function subgrad!(G, XTa, a, b)
     res = sum(abs2, XTa) - b;
-    lmul!(0.0,G)  # reset G to zero
-    BLAS.ger!(2*sign.(res), a, XTa, G);  # rank one update
+    lmul!(0,G)  # reset G to zero
+    BLAS.ger!(2*sign(res), a, XTa, G);  # rank one update
 end
 
 function enet_subgrad!(G, XTa, a, b)

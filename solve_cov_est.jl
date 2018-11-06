@@ -61,6 +61,11 @@ function solve_cov_est(X0::Array{Float64,2},
     (A,B) = get_ab(XTtrue, stochErr, maxIter);
     true_empirical_value = compute_empirical_function(Xtrue, A, B);
 
+    # for debugging
+    # @printf("Initial distance to solution: %1.2e, ",
+    #                         sqnrmXtrue + sum(abs2, X) - 2 * sum(svdvals(XTtrue * X)));
+    # @printf("Initial function error: %1.2e \n", compute_empirical_function(X, A, B));
+
     #   Run the method
     for k=1:maxIter
         # get stochastic a, b
