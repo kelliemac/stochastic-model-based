@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------------
-# Tuning the constant stepsize for SGD.
+# Tuning the constant stepsize for SGD and SMD
 #-----------------------------------------------------------------------------------
 
 using Random
@@ -11,17 +11,15 @@ include("solve_cov_est.jl");
 #-------------------------------------
 #   Parameters
 #-------------------------------------
-maxIter = 2500;
+maxIter = 10000;
 r = 2;  # rank
 d = 100;
-stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
+stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
+init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
-subgrad_stepsizes = [6.0, 9.0, 12.0, 15.0] * 1e-4;  # for d=100
-# subgrad_stepsizes = [9.0, 10.0, 11.0, 12.0] * 1e-4;  # for d=10
-mirror_stepsizes = [0.1, 1.0, 5.0, 10.0];  # for d=100
-# mirror_stepsizes = [0.2, 0.3, 0.4, 0.5];  # for d=10
-
-step_colors = ["#1f78b4", "#33a02c", "red", "blue"];
+subgrad_stepsizes = [1.25, 1.5, 1.75] * 1e-4;
+mirror_stepsizes = [0.5, 0.6, 0.7];
+step_colors = ["#1f78b4", "#33a02c", "red"]; #, "blue"];
 
 Random.seed!(321);  # for reproducibility
 
@@ -30,15 +28,17 @@ Random.seed!(321);  # for reproducibility
 #-------------------------------------
 subgrad_plot = figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
-ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
+ylabel(L"Relative distance to solution set $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
 title(@sprintf("SGD for covariance estimation (r=%i, d=%i)", r,d));
 xlim(0,maxIter)
+ylim(1e-4, 1e1)
 
 mirror_plot = figure(figsize=[10,6]);
 xlabel(L"Iteration $k$");
-ylabel(L"$\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
+ylabel(L"Relative distance to solution set $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
 title(@sprintf("SMD for covariance estimation (r=%i, d=%i)", r,d));
 xlim(0,maxIter)
+ylim(1e-4, 1e1)
 
 #-----------------------------------------------------------------------------------------
 #   Run stochastic subgradient method for each dimension
@@ -51,9 +51,8 @@ for i=1:length(step_colors)
     Xtrue = randn(d,r);
 
     # Generate initial point
-    radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
     pert = randn(d,r);
-    Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
+    Xinit = Xtrue + init_radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
     # Run the two methods
     (subgrad_err_hist, ~) = solve_cov_est(Xinit, Xtrue, stoch_err,  maxIter,
