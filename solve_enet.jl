@@ -9,7 +9,8 @@ function solve_enet(X0::Array{Float64,2},
                                 stochErr::Float64,
                                 maxIter::Int64,
                                 stepSizes::Array{Float64,1};
-                                method::String="subgradient"
+                                method::String="subgradient",
+                                verbose::Bool=true
                                 )
 
     # Basic data
@@ -45,6 +46,7 @@ function solve_enet(X0::Array{Float64,2},
 
     # draw the stochastic a, b
     (A,B) = get_ab(XTtrue, stochErr, maxIter)
+    true_empirical_value = compute_empirical_function(Xtrue, A, B);
 
     #   Run subgradient method
     for k=1:maxIter
@@ -83,9 +85,13 @@ function solve_enet(X0::Array{Float64,2},
         err_hist[k] = normalized_err;
 
         fun_val = compute_enet_empirical_function(X, A, B);
-        fun_hist[k] = fun_val;
+        value_error = fun_val - true_empirical_value ;
+        fun_hist[k] = value_error;
 
-        @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n", k, fun_val, normalized_err, η);
+        if verbose
+            @printf("iter %3d: emp val = %1.2e, error = %1.2e, stepsize = %1.2e\n",
+                                k, value_error, normalized_err, η);
+        end
     end
 
     return (err_hist, fun_hist)
