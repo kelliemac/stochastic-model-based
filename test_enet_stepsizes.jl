@@ -68,9 +68,11 @@ for i=1:num_tests
 
     # Run the two methods
     (subgrad_err_hist, subgrad_fun_hist) = solve_enet(Xinit, Xtrue, stoch_err,  maxIter,
-                                                            fill(ηsubgrad, maxIter), method="subgradient")
+                                                            fill(ηsubgrad, maxIter), method="subgradient",
+                                                            noiseType="sparse")
     (mirror_err_hist, mirror_fun_hist) = solve_enet(Xinit, Xtrue, stoch_err,  maxIter,
-                                                                fill(ηmirror, maxIter), method="mirror")
+                                                                fill(ηmirror, maxIter), method="mirror",
+                                                                noiseType="sparse")
 
     # Add errors to plots
     plt[:figure](subgrad_plot[:number])

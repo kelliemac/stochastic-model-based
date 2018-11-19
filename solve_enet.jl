@@ -10,7 +10,8 @@ function solve_enet(X0::Array{Float64,2},
                                 maxIter::Int64,
                                 stepSizes::Array{Float64,1};
                                 method::String="subgradient",
-                                verbose::Bool=true
+                                verbose::Bool=true,
+                                noiseType::String="gaussian"
                                 )
 
     # Basic data
@@ -45,7 +46,7 @@ function solve_enet(X0::Array{Float64,2},
     fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     # draw the stochastic a, b
-    (A,B) = get_ab(XTtrue, stochErr, maxIter)
+    (A,B) = get_ab(XTtrue, stochErr, maxIter, noiseType=noiseType)
     true_empirical_value = compute_empirical_function(Xtrue, A, B);
 
     #   Run subgradient method

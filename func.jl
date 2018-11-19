@@ -17,6 +17,7 @@
 
 using LinearAlgebra
 using Polynomials
+using Random
 
 #------------------------------------------------------------------------------------------
 # Draw stochastic a's (gaussian) and corresponding b's
@@ -24,10 +25,15 @@ using Polynomials
 #                       A = matrix with a's in columns
 #                       B = vector with b's in entries
 #------------------------------------------------------------------------------------------
-function get_ab(XTtrue, stochErr::Float64, maxIter::Int64)
+function get_ab(XTtrue, stochErr::Float64, maxIter::Int64; noiseType::String="gaussian")
     (r,d) = size(XTtrue);
     A = randn(d, maxIter);  # gaussian entries in a's
     bError = stochErr * randn(1, maxIter);  # normal(0,stochErr²) errors
+    if noiseType=="sparse"
+        p = 0.25; # probability of corrupting a measurement
+        noiseless_idxs = randsubseq(collect(1:maxIter), 1-p);
+        bError[noiseless_idxs] = zeros(length(noiseless_idxs));
+    end
     B = sum(abs2, XTtrue*A, dims=1) + bError;
     return(A,B)
 end

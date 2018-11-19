@@ -51,7 +51,8 @@ for η in subgrad_stepsizes
         # Run the method and save progress
         steps = fill(η, maxIter);
         (err_hist, fun_hist) = solve_enet(Xinit, Xtrue, stoch_err,  maxIter, steps,
-                                                                    method="subgradient", verbose=false);
+                                                                    method="subgradient", verbose=false,
+                                                                    noiseType="sparse");
         sum_fun_hists += fun_hist;
         sum_err_hists += err_hist;
     end
