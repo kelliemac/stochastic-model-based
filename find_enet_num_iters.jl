@@ -11,16 +11,16 @@ include("solve_enet.jl");
 Random.seed!(123);  # for reproducibility
 
 # Set problem parameters
-r = 2;  # rank
+r = 5;  # rank
 d = 100;
-stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
-maxIter = 5000;
+stoch_err = sqrt(10);  # standard deviation of errors in stochastic measurements b
+maxIter = 10000;
 init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
 # Set accuracy parameters
 ϵ = 1e-3;
 num_trials = 1;
-subgrad_stepsizes = [1e-6, 5e-6, 9e-6];
+subgrad_stepsizes = [1e-6, 5e-6];
 
 # Make plot
 figure(figsize=[10,6]);
