@@ -25,9 +25,9 @@ r = 2;  # rank
 d = 100;  # ambient dimension
 stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
 
-maxIter = 5000;
+maxIter = 8000;
 steps = 10.0 .^ [-5, -4, -3, -2, -1, 0, 1, 2];
-num_trials = 10;
+num_trials = 1;
 
 Random.seed!(123);  # for reproducibility
 
@@ -52,6 +52,8 @@ for i in 1:length(steps)
     sum_vals_mirror = 0;
 
     for t in 1:num_trials
+        @printf("Step size %i of %i, trial %i of %i", i, length(steps), t, num_trials)
+
         # Generate true matrix we are searching for
         Xtrue = randn(d,r);
 
@@ -65,9 +67,11 @@ for i in 1:length(steps)
 
         # Run SGD and SMD
         (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est(Xinit, Xtrue, stoch_err,
-                                                                          maxIter, stepSizes, method="subgradient")
+                                                                          maxIter, stepSizes, method="subgradient",
+                                                                          verbose=false)
         (err_hist_mirror, fun_hist_mirror) = solve_cov_est(Xinit, Xtrue, stoch_err,
-                                                                          maxIter, stepSizes, method="mirror")
+                                                                          maxIter, stepSizes, method="mirror",
+                                                                          verbose=false)
 
         # Record final errors
         sum_distances_subgrad += err_hist_subgrad[end];
