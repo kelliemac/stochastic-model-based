@@ -23,6 +23,7 @@ function solve_cov_est(X0::Array{Float64,2},
                                       maxIter::Int64,
                                       stepSizes::Array{Float64,1};
                                       method::String="subgradient",
+                                      clipped::Bool=false,
                                       verbose::Bool=true
                                     )
     # Basic data
@@ -32,6 +33,7 @@ function solve_cov_est(X0::Array{Float64,2},
 
     #   Initializations
     X = copy(X0);
+    Xtest = copy(X0);
     a = zeros(d);
     XTa = zeros(r);
     b = 0;
@@ -51,15 +53,15 @@ function solve_cov_est(X0::Array{Float64,2},
         λ = 0;
     end
 
-    # Make vectors for keeping track of progress
-    err = NaN;
-    err_hist =  fill(NaN, maxIter);  # to keep track of errors
-    fun_val = NaN;
-    fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
-
     # draw the stochastic a, b
     (A,B) = get_ab(XTtrue, stochErr, maxIter);
     true_empirical_value = compute_empirical_function(Xtrue, A, B);
+
+    # Make vectors for keeping track of progress
+    err = NaN;
+    err_hist =  fill(NaN, maxIter);  # to keep track of errors
+    fun_val = compute_empirical_function(X, A, B);
+    fun_hist =  fill(NaN, maxIter);  # to keep track of function values (approximates)
 
     # for debugging
     # @printf("Initial distance to solution: %1.2e, ",
@@ -75,15 +77,21 @@ function solve_cov_est(X0::Array{Float64,2},
 
         # update subgradient - in place
         subgrad!(G, XTa, a, b);
+        thresh = tr(G' * X) - fun_val;
 
         if method=="subgradient"
             # update X - in place
-            η = stepSizes[k];
+            if clipped
+                η = minimum(stepSizes[k], fun_val/sum(abs2,G));
+            else
+                η = stepSizes[k];
+            end
             BLAS.axpy!(-η,G,X);
         elseif method=="mirror"
             # update V = ∇Φ(X) - η * G
             η = stepSizes[k];
-            V = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X  - η*G;
+            gradPhi = ( 2*c0 + 3*c1*norm(X,2) + 4*c2*sum(abs2, X) ) * X;
+            V = gradPhi  - η*G;
             nrmV = norm(V,2);
 
             # root finding problem to find λ = norm of X
@@ -92,8 +100,48 @@ function solve_cov_est(X0::Array{Float64,2},
             λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2]);
 
             # update X - in place
-            lmul!(0.0, X)  # reset to zero
-            BLAS.axpy!(λ/nrmV,V,X)
+            lmul!(0.0, Xtest)  # reset to zero
+            BLAS.axpy!(λ/nrmV,V,Xtest)
+
+            # check that X satisfied clipped constraints
+            if clipped & (tr(G' * Xtest) < thresh)
+                # first try: ∇ϕ(Y) = ∇ϕ(X_k)
+                V = gradPhi;
+                nrmV = norm(V,2);
+                λ = get_root([-nrmV, 2*c0, 3*c1, 4*c2]);
+                lmul!(0.0, Xtest)  # reset to zero
+                BLAS.axpy!(λ/nrmV,V,Xtest)
+
+                # second try
+                if (tr(G' * Xtest) > thresh)
+                    alpha = tr(G' * gradPhi);
+                    W = gradPhi - alpha*G;
+                    a = 2*c0;
+                    b = 3*c1;
+                    c = 4*c2;
+                    sqnormG = sum(abs2,G);
+                    d = thresh^2/sqnormG;
+                    # have (a + bλ + cλ^2)^2 (λ^2 - d) - ||W||^2 = 0
+                    lam = get_root([ -a^2*d - sum(abs2,W),
+                                            -2*a*b*d,
+                                            a^2 - 2*a*c*d - b^2*d,
+                                            2*a*b - 2*b*c*d,
+                                            2*a*c + b^2 - c^2*d,
+                                            2*b*c,
+                                            c^2
+                                            ]);
+                    mu = -(2*c0+3*c1*lam+4*c2*lam^2)*thresh/sqnormG+alpha;
+                    if mu >= 0
+                        V = W + (alpha-mu)*G;
+                        Xtest = (lam/nrmV) * V;
+                    else
+                        Xtest = X;  # don't take a step at all
+                    end
+                end
+            end
+
+            X = Xtest;
+
         end
 
         # record error status and print to console

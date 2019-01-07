@@ -44,11 +44,13 @@ end
 #                   A = matrix with columns as the a's
 #                   B = vector with b's as entries
 #---------------------------------------------------------------------------------------------------
+# vanilla covarianc estimation function value
 function compute_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
     return sum(abs, residuals) / size(A,2)
 end
 
+# elastic net empirical function value
 function compute_enet_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
     return (sum(abs, residuals) + sum(abs2, residuals)) / size(A,2)
@@ -80,6 +82,6 @@ function get_root(coeffs)
     pos_real_idxs = map(x->(imag(x)==0.0 && real(x)>0), all_roots);
     pos_real_roots = real(all_roots[pos_real_idxs]);
 
-    # return smallest real root
+    # return smallest positive real root
     return(minimum(pos_real_roots))
 end
