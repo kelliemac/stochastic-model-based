@@ -44,8 +44,8 @@ ylim(1e-4, 1e1)
 #   Run stochastic subgradient method for each dimension
 #-----------------------------------------------------------------------------------------
 for i=1:length(step_colors)
-    #ηsubgrad = subgrad_stepsizes[i];
-    ηmirror = mirror_stepsizes[i];
+    ηsubgrad = subgrad_stepsizes[i];
+    # ηmirror = mirror_stepsizes[i];
 
     # Generate true matrix we are searching for
     Xtrue = randn(d,r);
