@@ -71,7 +71,7 @@ savefig("plots/clipped_test_distances.pdf");
 fun_plot = figure(figsize=[10,6]);
 title(@sprintf("Absolute Function Errors for SGD and Clipped SMD (r=%i, d=%i)", r,d));
 xlabel(L"Stepsize $\eta$");
-ylabel(L"");
+ylabel(L"Empirical Function Error $\quad \hat f (X_{final}) - \hat f (X_{true})$");
 # xlim(0,maxIter)
 # ylim(1e-4, 1e1)
 semilogy(stepSizes, fun_errors_sgd, label="sgd");

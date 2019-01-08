@@ -14,7 +14,7 @@
 #                   verbose
 #
 #   Outputs:   (err_hist, fun_hist) = (history of normalized distances to solution,
-#                                                       history of empirical function values)
+#                                               history of errors in empirical function values)
 # ---------------------------------------------------------------------------------------------
 include("func.jl");
 using Printf
