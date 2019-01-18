@@ -12,7 +12,7 @@ Random.seed!(321);  # for reproducibility
 #    What two methods are we comparing?
 #-------------------------------------------------------------
 method1 = "subgradient"
-method2 = "subgradient"
+method2 = "mirror"
 clipped1 = false
 clipped2 = true
 
@@ -25,8 +25,7 @@ d = 100;
 stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
 init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
-stepSizes = [1e-5, 1e-6];
-# stepSizes = [1e-4 , 1e-5, 1e-6, 1e-7];
+stepSizes = [1e-4 , 1e-5, 1e-6, 1e-7];
 
 #-----------------------------------------------------------
 #   Initialize vectors to track final errors
