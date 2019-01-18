@@ -25,15 +25,14 @@ d = 100;
 stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
 init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
-stepSizes = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2];
+stepSizes = 10.0 .^ [-5, -4, -3, -2, -1, 0, 1, 2];
 
 #-----------------------------------------------------------
 #   Initialize vectors to track final errors
 #-----------------------------------------------------------
 dist_errors_1 = fill(NaN, length(stepSizes));
-dist_errors_2 = fill(NaN, length(stepSizes));
-
 fun_errors_1 = fill(NaN, length(stepSizes));
+dist_errors_2 = fill(NaN, length(stepSizes));
 fun_errors_2 = fill(NaN, length(stepSizes));
 
 #-----------------------------------------------------------------------------------------
@@ -47,21 +46,19 @@ for i=1:length(stepSizes)
     pert = randn(d,r);
     Xinit = Xtrue + init_radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
-    # Run the two methods
-    @printf("Running Method 1 for stepsize %1.2e (%i of %i )\n", η, i, length(stepSizes));
+    # Run the two methods and record final errors
+    @printf("Running Method 1 for stepsize %1.2e (%i of %i)\n", η, 2*i-1, 2*length(stepSizes));
     (err_hist_1, fun_hist_1) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
                                                    fill(η, maxIter), method=method1, clipped=clipped1, verbose=false)
+   dist_errors_1[i] = err_hist_1[end];
+   fun_errors_1[i] = fun_hist_1[end];
 
-    @printf("Running Method 2 for stepsize %1.2e (%i of %i )\n", η, i, length(stepSizes));
+    @printf("Running Method 2 for stepsize %1.2e (%i of %i )\n", η, 2*i, 2*length(stepSizes));
     (err_hist_2, fun_hist_2)  = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
                                                     fill(η, maxIter), method=method2, clipped=clipped2, verbose=false)
-
-    # Record final errors
-    dist_errors_1[i] = err_hist_1[end];
-    dist_errors_2[i] = fun_hist_1[end];
-
-    fun_errors_1[i] = err_hist_2[end];
+    dist_errors_2[i] = err_hist_2[end];
     fun_errors_2[i] = fun_hist_2[end];
+
 end
 
 distance_plot = figure(figsize=[10,6]);

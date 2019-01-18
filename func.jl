@@ -47,7 +47,7 @@ end
 # vanilla covarianc estimation function value
 function compute_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
-    return sum(abs, residuals) / size(A,2)
+    return sum(abs, residuals)
 end
 
 # elastic net empirical function value
@@ -61,7 +61,7 @@ end
 #----------------------------------------------------------------------------
 function subgrad!(G, XTa, a, b)
     res = sum(abs2, XTa) - b;
-    lmul!(0,G)  # reset G to zero
+    lmul!(0.0,G)  # reset G to zero
     BLAS.ger!(2*sign(res), a, XTa, G);  # rank one update
 end
 
