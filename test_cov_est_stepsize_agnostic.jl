@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------------
 # Testing SGD and SMD, clipped and non-clipped models
-# Step size agnostic
+# Step size agnostic plots: covergence at range of stepsizes
 #-----------------------------------------------------------------------------------
 
 using Random, PyPlot, LaTeXStrings, Printf
@@ -14,7 +14,7 @@ Random.seed!(321);  # for reproducibility
 method1 = "subgradient"
 method2 = "mirror"
 clipped1 = false
-clipped2 = true
+clipped2 = false
 
 #-------------------------------------
 #    Set parameters
@@ -25,7 +25,7 @@ d = 100;
 stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
 init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
-stepSizes = [1e-4 , 1e-5, 1e-6, 1e-7];
+stepSizes = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2];
 
 #-----------------------------------------------------------
 #   Initialize vectors to track final errors
@@ -48,11 +48,13 @@ for i=1:length(stepSizes)
     Xinit = Xtrue + init_radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
     # Run the two methods
+    @printf("Running Method 1 for stepsize %1.2e (%i of %i )\n", η, i, length(stepSizes));
     (err_hist_1, fun_hist_1) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
-                                                   fill(η, maxIter), method=method1, clipped=clipped1)
+                                                   fill(η, maxIter), method=method1, clipped=clipped1, verbose=false)
 
+    @printf("Running Method 2 for stepsize %1.2e (%i of %i )\n", η, i, length(stepSizes));
     (err_hist_2, fun_hist_2)  = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
-                                                    fill(η, maxIter), method=method2, clipped=clipped2)
+                                                    fill(η, maxIter), method=method2, clipped=clipped2, verbose=false)
 
     # Record final errors
     dist_errors_1[i] = err_hist_1[end];
@@ -63,23 +65,19 @@ for i=1:length(stepSizes)
 end
 
 distance_plot = figure(figsize=[10,6]);
-title(@sprintf("Relative Distance Errors (r=%i, d=%i)", r,d));
+title(@sprintf("Relative Distance Errors (r=%i, d=%i, %i iterations)", r,d,maxIter));
 xlabel(L"Stepsize $\eta$");
 ylabel(L"Relative distance to solution set $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-# xlim(0,maxIter)
-# ylim(1e-4, 1e1)
-semilogy(stepSizes, dist_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
-semilogy(stepSizes, dist_errors_2, label=string(method2, clipped2 ? " clipped" : ""));
+loglog(stepSizes, dist_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
+loglog(stepSizes, dist_errors_2, label=string(method2, clipped2 ? " clipped" : ""));
 legend(loc="upper right")
 savefig("plots/agnostic_cov_est_distances.pdf");
 
 fun_plot = figure(figsize=[10,6]);
-title(@sprintf("Absolute Function Errors (r=%i, d=%i)", r,d));
+title(@sprintf("Absolute Function Errors (r=%i, d=%i, %i iterations)", r,d,maxIter));
 xlabel(L"Stepsize $\eta$");
 ylabel(L"Empirical Function Error $\quad \hat f (X_{final}) - \hat f (X_{true})$");
-# xlim(0,maxIter)
-# ylim(1e-4, 1e1)
-semilogy(stepSizes, fun_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
-semilogy(stepSizes, fun_errors_2, label=string(method2, clipped2 ? " clipped" : "") );
+loglog(stepSizes, fun_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
+loglog(stepSizes, fun_errors_2, label=string(method2, clipped2 ? " clipped" : "") );
 legend(loc="upper right")
 savefig("plots/agnostic_cov_est_values.pdf");
