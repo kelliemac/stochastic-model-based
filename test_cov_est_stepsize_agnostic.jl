@@ -1,113 +1,86 @@
-#------------------------------------------------------------------------------------------------------------
-#   Solving
-#   min_{X \in \R^{d x r}}   F(X)   :=    E_{a,b} | <XX^T, aa^T> - b |
-#   via
-#   1) stochastic subgradient method (Φ = 1/2 ||⋅||^2)
-#   2) stochastic mirror descent (Φ = a quartic polynomial)
-#
-#   Note that stochastic subgradients are
-#   ∂ (  | <XX^T, a a^T> - b |  )   =    sign(<XX^T, aa^T> - b) * 2 aa^T X
-#   where (a, b) are chosen randomly.
-#
-# Saves plots of 1) relative errors:  min_{U orthogonal} || X U - Xtrue ||₂² / || Xtrue ||₂²
-#                        2) empirical function values
-#------------------------------------------------------------------------------------------------------------
-using Random  # for setting the random seed
-using PyPlot
-using LaTeXStrings, Printf  # for plot labels
+#-----------------------------------------------------------------------------------
+# Testing SGD and SMD, clipped and non-clipped models
+# Step size agnostic
+#-----------------------------------------------------------------------------------
 
+using Random, PyPlot, LaTeXStrings, Printf
 include("solve_cov_est.jl");
 
+Random.seed!(321);  # for reproducibility
+
+#-------------------------------------------------------------
+#    What two methods are we comparing?
+#-------------------------------------------------------------
+method1 = "subgradient"
+method2 = "subgradient"
+clipped1 = false
+clipped2 = true
+
 #-------------------------------------
-#   Set parameters
+#    Set parameters
 #-------------------------------------
+maxIter = 9000;
 r = 2;  # rank
-d = 100;  # ambient dimension
-stoch_err = 0.1;  # standard deviation of errors in stochastic measurements b
+d = 100;
+stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
+init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
-maxIter = 8000;
-steps = 10.0 .^ [-5, -4, -3, -2, -1, 0, 1, 2];
-num_trials = 1;
+stepSizes = [1e-5, 1e-6];
+# stepSizes = [1e-4 , 1e-5, 1e-6, 1e-7];
 
-Random.seed!(123);  # for reproducibility
+#-----------------------------------------------------------
+#   Initialize vectors to track final errors
+#-----------------------------------------------------------
+dist_errors_1 = fill(NaN, length(stepSizes));
+dist_errors_2 = fill(NaN, length(stepSizes));
 
-#-------------------------------------------------------------------------------------------
-#   For plots - distances to solution and function values
-#-------------------------------------------------------------------------------------------
-distances_subgrad = fill(NaN, length(steps));
-distances_mirror = fill(NaN, length(steps));
-
-vals_subgrad = fill(NaN, length(steps));
-vals_mirror = fill(NaN, length(steps));
+fun_errors_1 = fill(NaN, length(stepSizes));
+fun_errors_2 = fill(NaN, length(stepSizes));
 
 #-----------------------------------------------------------------------------------------
-#   Run SGD and SMD method for each dimension
+#   Run the two methods for each choice of stepsize
 #-----------------------------------------------------------------------------------------
-for i in 1:length(steps)
-    η = steps[i];
+for i=1:length(stepSizes)
+    η = stepSizes[i];
 
-    sum_distances_subgrad = 0;
-    sum_distances_mirror = 0;
-    sum_vals_subgrad = 0;
-    sum_vals_mirror = 0;
+    # Generate true matrix and initialization
+    Xtrue = randn(d,r);
+    pert = randn(d,r);
+    Xinit = Xtrue + init_radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
 
-    for t in 1:num_trials
-        @printf("Step size %i of %i, trial %i of %i", i, length(steps), t, num_trials)
+    # Run the two methods
+    (err_hist_1, fun_hist_1) = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
+                                                   fill(η, maxIter), method=method1, clipped=clipped1)
 
-        # Generate true matrix we are searching for
-        Xtrue = randn(d,r);
+    (err_hist_2, fun_hist_2)  = solve_cov_est(Xinit, Xtrue, stoch_err, maxIter,
+                                                    fill(η, maxIter), method=method2, clipped=clipped2)
 
-        # Generate initial point
-        radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
-        pert = randn(d,r);
-        Xinit = Xtrue + radius * (norm(Xtrue, 2) / norm(pert, 2)) * pert;
+    # Record final errors
+    dist_errors_1[i] = err_hist_1[end];
+    dist_errors_2[i] = fun_hist_1[end];
 
-        # Specify step sizes
-        stepSizes = fill(η, maxIter);
-
-        # Run SGD and SMD
-        (err_hist_subgrad, fun_hist_subgrad) = solve_cov_est(Xinit, Xtrue, stoch_err,
-                                                                          maxIter, stepSizes, method="subgradient",
-                                                                          verbose=false)
-        (err_hist_mirror, fun_hist_mirror) = solve_cov_est(Xinit, Xtrue, stoch_err,
-                                                                          maxIter, stepSizes, method="mirror",
-                                                                          verbose=false)
-
-        # Record final errors
-        sum_distances_subgrad += err_hist_subgrad[end];
-        sum_distances_mirror += err_hist_mirror[end];
-
-        sum_vals_subgrad += fun_hist_subgrad[end];
-        sum_vals_mirror += fun_hist_mirror[end];
-    end
-
-    distances_subgrad[i] = sum_distances_subgrad / num_trials;
-    distances_mirror[i] = sum_distances_mirror / num_trials;
-
-    vals_subgrad[i] = sum_vals_subgrad / num_trials;
-    vals_mirror[i] = sum_vals_mirror / num_trials;
+    fun_errors_1[i] = err_hist_2[end];
+    fun_errors_2[i] = fun_hist_2[end];
 end
 
-# Make and save distance plot
-dist_fig = figure(figsize=[10,6]);
-xlabel(L"Step Size $\eta$");
-ylabel(L"Average Distance $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
-title(@sprintf("Distance to solution for covariance estimation (r=%i, d=%i)", r, d));
-xlim(minimum(steps),maximum(steps))
-
-loglog(steps, distances_subgrad, label="SGD")
-loglog(steps, distances_mirror, label="SMD")
+distance_plot = figure(figsize=[10,6]);
+title(@sprintf("Relative Distance Errors (r=%i, d=%i)", r,d));
+xlabel(L"Stepsize $\eta$");
+ylabel(L"Relative distance to solution set $\min_U \; \frac{\| X_k U - X_{true} \|_2^2 }{\| X_{true} \|_2^2}$");
+# xlim(0,maxIter)
+# ylim(1e-4, 1e1)
+semilogy(stepSizes, dist_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
+semilogy(stepSizes, dist_errors_2, label=string(method2, clipped2 ? " clipped" : ""));
 legend(loc="upper right")
-savefig("plots/cov_est_average_distances.pdf");
+savefig("plots/agnostic_cov_est_distances.pdf");
 
-# Make and save function values plot
-fun_vals_fig = figure(figsize=[10,6]);
-xlabel(L"Step Size $\eta$");
-ylabel("Average final function value error (relative)");
-title(@sprintf("Function values for covariance estimation (r=%i, d=%i)", r, d));
-xlim(minimum(steps),maximum(steps))
-
-loglog(steps, vals_subgrad, label="SGD")
-loglog(steps, vals_mirror, label="SMD")
+fun_plot = figure(figsize=[10,6]);
+title(@sprintf("Absolute Function Errors (r=%i, d=%i)", r,d));
+xlabel(L"Stepsize $\eta$");
+ylabel(L"Empirical Function Error $\quad \hat f (X_{final}) - \hat f (X_{true})$");
+# xlim(0,maxIter)
+# ylim(1e-4, 1e1)
+semilogy(stepSizes, fun_errors_1, label=string(method1, clipped1 ? " clipped" : "") );
+semilogy(stepSizes, fun_errors_2, label=string(method2, clipped2 ? " clipped" : "") );
 legend(loc="upper right")
-savefig("plots/cov_est_average_values.pdf");
+savefig("plots/agnostic_cov_est_values.pdf");
