@@ -5,16 +5,16 @@
 #                       2) mirror descent (with a polynomial mirror map)
 #
 #   Inputs:     X0 = initialization (d x r matrix)
-#                   Xtrue = true matrix we are solving for (input to plot dist. to solution)
+#                   Xtrue = true matrix (used to plot dist. to solution)
 #                   stochErr = variance of stochastic errors in residuals <XX^T,aa^T> - b
-#                   maxIter
+#                   maxIter = maximum no. iterations
 #                   stepSizes = one-dim array of stepsizes (length maxIter)
 #                   method = "subgradient" or "mirror"
-#                   clipped
-#                   verbose
+#                   clipped = whether to use clipping (true/false)
+#                   verbose = whether to print output (true/false)
 #
-#   Outputs:   (err_hist, fun_hist) = (history of normalized distances to solution,
-#                                               history of errors in empirical function values)
+#   Outputs:   (err_hist, fun_hist) = (array of normalized distances to solution,
+#                                               array of errors in empirical function values)
 # ---------------------------------------------------------------------------------------------
 include("func.jl");
 using Printf
