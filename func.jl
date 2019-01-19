@@ -44,7 +44,7 @@ end
 #                   A = matrix with columns as the a's
 #                   B = vector with b's as entries
 #---------------------------------------------------------------------------------------------------
-# vanilla covarianc estimation function value
+# vanilla covariance estimation function value
 function compute_empirical_function(X, A, B)
     residuals = sum(abs2, X'*A, dims=1) - B;
     return sum(abs, residuals)

@@ -14,7 +14,7 @@ Random.seed!(321);  # for reproducibility
 method1 = "subgradient"
 method2 = "mirror"
 clipped1 = false
-clipped2 = false
+clipped2 = true
 
 #-------------------------------------
 #    Set parameters
