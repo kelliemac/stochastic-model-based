@@ -14,7 +14,7 @@
 #                   verbose = whether to print output (true/false)
 #
 #   Outputs:   (err_hist, fun_hist) = (array of normalized distances to solution,
-#                                               array of errors in empirical function values)
+#                                       array of absolute errors in empirical function values)
 # ---------------------------------------------------------------------------------------------
 include("func.jl");
 using Printf
@@ -151,8 +151,8 @@ function solve_cov_est(X0::Array{Float64,2},
         err_hist[k] = normalized_err;
 
         fun_val = compute_empirical_function(X, A, B);
-        rel_value_error = (fun_val - true_empirical_value) / true_empirical_value;
-        fun_hist[k] = rel_value_error;
+        abs_value_error = fun_val - true_empirical_value ;
+        fun_hist[k] = abs_value_error;
 
         if verbose
             @printf("iter %3d: function err = %1.2e, dist err = %1.2e, stepsize = %1.2e\n",
