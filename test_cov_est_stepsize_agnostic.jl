@@ -20,13 +20,13 @@ clipped2 = true
 #    Set parameters
 #-------------------------------------
 maxIter = 9000;
-r = 2;  # rank
+r = 10;  # rank
 d = 100;
 stoch_err = 0.01;  # standard deviation of errors in stochastic measurements b
 init_radius = 1.0;  # 2-norm measure of relative deviation between Xtrue and Xinit
 
 stepSizes = 10.0 .^(range(-6,2,length=17))
-num_rounds = 1;
+num_rounds = 10;
 
 #-----------------------------------------------------------
 #   Initialize vectors to track final errors
